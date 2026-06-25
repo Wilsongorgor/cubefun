@@ -1,0 +1,196 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>拍照识别 - 乐玩魔方</title>
+  <link rel="icon" href="images/icon.png" type="image/png">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="js/cube.js"></script>
+  <script src="js/solver.js"></script>
+  <script src="js/app.js"></script>
+</head>
+<body>
+  <div class="page camera-page" id="app">
+    <div class="nav-bar">
+      <button class="nav-back" onclick="history.back()">‹</button>
+      <div class="nav-title">拍照识别</div>
+    </div>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="face-title" id="faceTitle"></div>
+    <div class="hint-text" id="hintText"></div>
+    <div class="step-indicator" id="stepIndicator"></div>
+
+    <div id="capturePhase">
+      <div class="camera-area" id="cameraArea">
+        <video id="video" autoplay playsinline></video>
+      </div>
+      <div class="action-buttons">
+        <button class="btn-primary" onclick="takePhoto()">📸 拍照</button>
+        <button class="btn-secondary" onclick="skipPhoto()">跳过拍照，手动填色</button>
+      </div>
+    </div>
+
+    <div id="editPhase" style="display:none;">
+      <img id="photoPreview" class="photo-preview" style="display:none;">
+      <div class="grid-section">
+        <div class="grid-label">点击格子选择颜色</div>
+        <div class="cube-grid" id="cubeGrid"></div>
+      </div>
+      <div class="color-picker">
+        <div class="picker-label">选择颜色</div>
+        <div class="picker-swatches" id="colorPicker"></div>
+      </div>
+      <div class="action-buttons">
+        <button class="btn-primary" onclick="confirmFace()">确认本面 ✓</button>
+        <button class="btn-secondary" id="prevBtn" onclick="prevFace()" style="display:none;">← 上一面</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <div class="modal-title" id="modalTitle"></div>
+      <div class="modal-content" id="modalContent"></div>
+      <div class="modal-buttons">
+        <button class="btn-primary" id="modalConfirmBtn">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var SCAN_ORDER = [
+      { face: 0, name: '白色 上面 (U)', hint: '将白色面朝上对准相机' },
+      { face: 3, name: '蓝色 后面 (B)', hint: '将后面转向前方对准相机' },
+      { face: 4, name: '红色 右面 (R)', hint: '将右面对准相机' },
+      { face: 2, name: '绿色 前面 (F)', hint: '将前面对准相机' },
+      { face: 5, name: '橙色 左面 (L)', hint: '将左面对准相机' },
+      { face: 1, name: '黄色 下面 (D)', hint: '将下面转向相机' },
+    ];
+
+    var currentStep = 0, totalSteps = 6, tempFill = -1;
+    var faceColors = [], allFaces = [], stream = null;
+    var COLORS = [
+      { hex: '#ffffff', name: '白' }, { hex: '#ffd500', name: '黄' },
+      { hex: '#00b16a', name: '绿' }, { hex: '#0051ba', name: '蓝' },
+      { hex: '#b71234', name: '红' }, {  hex: '#ff5800', name: '橙' },
+    ];
+
+    function initStep() {
+      var info = SCAN_ORDER[currentStep];
+      document.getElementById('faceTitle').textContent = info.name;
+      document.getElementById('hintText').textContent = info.hint;
+      document.getElementById('stepIndicator').textContent = '第 ' + (currentStep+1) + ' / ' + totalSteps + ' 面';
+      var pb = document.getElementById('progressBar');
+      pb.innerHTML = '';
+      for (var i = 0; i < totalSteps; i++) {
+        var d = document.createElement('div'); d.className = 'progress-dot';
+        if (i < currentStep) d.className += ' done'; else if (i === currentStep) d.className += ' active';
+        pb.appendChild(d);
+      }
+      faceColors = [-1,-1,-1,-1,-1,-1,-1,-1,-1]; faceColors[4] = info.face;
+      tempFill = -1;
+      document.getElementById('capturePhase').style.display = 'block';
+      document.getElementById('editPhase').style.display = 'none';
+      document.getElementById('prevBtn').style.display = currentStep > 0 ? 'block' : 'none';
+      startCamera(); renderGrid(); renderColorPicker();
+    }
+
+    function startCamera() {
+      var video = document.getElementById('video');
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+          .then(function(s) { stream = s; video.srcObject = s; video.play(); })
+          .catch(function() {
+            document.getElementById('cameraArea').innerHTML = '<div class="camera-placeholder"><div class="camera-icon-big">📷</div><div>相机不可用，跳过拍照直接填色</div></div>';
+          });
+      } else {
+        document.getElementById('cameraArea').innerHTML = '<div class="camera-placeholder"><div class="camera-icon-big">📷</div><div>相机不可用，跳过拍照直接填色</div></div>';
+      }
+    }
+
+    function stopCamera() { if (stream) { stream.getTracks().forEach(function(t) { t.stop(); }); stream = null; } }
+
+    function enterEditMode() { stopCamera(); document.getElementById('capturePhase').style.display = 'none'; document.getElementById('editPhase').style.display = 'block'; }
+
+    function takePhoto() {
+      var video = document.getElementById('video');
+      var canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      document.getElementById('photoPreview').src = canvas.toDataURL('image/jpeg');
+      document.getElementById('photoPreview').style.display = 'block';
+      enterEditMode();
+    }
+
+    function skipPhoto() { enterEditMode(); }
+
+    function renderGrid() {
+      var grid = [
+        [faceColors[0]>=0?COLORS[faceColors[0]].hex:'#eee', faceColors[1]>=0?COLORS[faceColors[1]].hex:'#eee', faceColors[2]>=0?COLORS[faceColors[2]].hex:'#eee'],
+        [faceColors[3]>=0?COLORS[faceColors[3]].hex:'#eee', faceColors[4]>=0?COLORS[faceColors[4]].hex:'#eee', faceColors[5]>=0?COLORS[faceColors[5]].hex:'#eee'],
+        [faceColors[6]>=0?COLORS[faceColors[6]].hex:'#eee', faceColors[7]>=0?COLORS[faceColors[7]].hex:'#eee', faceColors[8]>=0?COLORS[faceColors[8]].hex:'#eee']
+      ];
+      var container = document.getElementById('cubeGrid'); container.innerHTML = '';
+      for (var r = 0; r < 3; r++) {
+        var rowDiv = document.createElement('div'); rowDiv.className = 'grid-row';
+        for (var c = 0; c < 3; c++) {
+          var cell = document.createElement('div'); var idx = r*3+c;
+          cell.className = 'grid-cell' + (tempFill===idx?' selected':'') + (idx===4?' center-cell':'');
+          cell.style.backgroundColor = grid[r][c];
+          cell.onclick = (function(i) { return function() { if(i===4){showToast('中心色已确定');return;} tempFill=i;renderGrid();renderColorPicker();}; })(idx);
+          if (idx === 4) { var m = document.createElement('div'); m.className = 'center-marker'; m.textContent = '中'; cell.appendChild(m); }
+          rowDiv.appendChild(cell);
+        }
+        container.appendChild(rowDiv);
+      }
+    }
+
+    function renderColorPicker() {
+      var container = document.getElementById('colorPicker'); container.innerHTML = '';
+      for (var i = 0; i < COLORS.length; i++) {
+        var sw = document.createElement('div'); sw.className = 'color-swatch';
+        sw.style.backgroundColor = COLORS[i].hex;
+        sw.onclick = (function(idx) { return function() {
+          if(tempFill<0){showToast('请先点击要修改的格子');return;}
+          faceColors[tempFill]=idx; tempFill=-1; renderGrid();
+        }; })(i);
+        var l = document.createElement('div'); l.className = 'swatch-name'; l.textContent = COLORS[i].name;
+        sw.appendChild(l); container.appendChild(sw);
+      }
+    }
+
+    function confirmFace() {
+      for (var i = 0; i < 9; i++) { if (faceColors[i] < 0) { showToast('请填完所有格子'); return; } }
+      allFaces[SCAN_ORDER[currentStep].face] = faceColors.slice();
+      var ns = currentStep + 1;
+      if (ns >= 6) {
+        var state = new Array(54);
+        for (var f = 0; f < 6; f++) for (var i = 0; i < 9; i++) state[CubeEngine.FS[f]+i] = allFaces[f][i];
+        CubeState.cubeData = state; CubeState.scanMode = 'camera';
+        location.href = 'solve.html';
+      } else {
+        showModal('当前面已确认', '下一步：将魔方翻转至「'+SCAN_ORDER[ns].name+'」后点击确定', function(){ currentStep=ns; initStep(); });
+      }
+    }
+
+    function prevFace() { if(currentStep<=0)return; allFaces[SCAN_ORDER[--currentStep].face]=null; initStep(); }
+
+    function showToast(m) { var t=document.getElementById('toast'); t.textContent=m; t.className='toast show'; setTimeout(function(){t.className='toast';},2000); }
+
+    function showModal(t,c,onOk) {
+      document.getElementById('modalTitle').textContent=t;
+      document.getElementById('modalContent').textContent=c;
+      document.getElementById('modalOverlay').className='modal-overlay show';
+      document.getElementById('modalConfirmBtn').onclick=function(){
+        document.getElementById('modalOverlay').className='modal-overlay';
+        if(onOk)onOk();
+      };
+    }
+
+    initStep();
+  </script>
+</body>
+</html>
+

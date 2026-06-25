@@ -1,0 +1,6 @@
+﻿gen*.py
+write_html.py
+__pycache__/
+*.pyc
+.idea/
+.vscode/
