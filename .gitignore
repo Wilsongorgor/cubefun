@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 .idea/
 .vscode/
+
+wrangler.toml
+wrangler.toml.bak
