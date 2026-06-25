@@ -7,3 +7,10 @@ __pycache__/
 
 wrangler.toml
 wrangler.toml.bak
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
