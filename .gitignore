@@ -7,3 +7,58 @@ __pycache__/
 
 wrangler.toml
 wrangler.toml.bak
+
+# 依赖
+node_modules/
+
+# 临时/调试脚本与产物（不要上传）
+*.cjs
+_qtest*
+_ftest*
+_test*
+_final_test*
+build_solver*
+check_*
+color_test*
+debug_*
+decode_*
+dev_*
+do_all*
+final_*
+find_*
+fix_*
+gen_*
+init_check*
+inspect_*
+make_*
+patch_*
+prepare_*
+quick_test*
+sim_*
+t1.* t2.* t3.* t4.* t5.* t6.* t7.*
+trace_*
+verify_*
+write_*
+test_*
+test-results/
+test_b64.txt
+test_out.html
+test_ps.html
+test_solver_result.png
+temp_out.txt
+
+# 备份/旧版本
+*.bak
+js/solver_*.js
+
+# 包与杂项
+package-lock.json
+package.json
+_check_perm*
+t1.*
+t2.*
+t3.*
+t4.*
+t5.*
+t6.*
+t7.*

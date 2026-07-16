@@ -26,12 +26,12 @@
         <video id="video" autoplay playsinline></video>
         <div class="overlay-grid" id="overlayGrid">
           <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
-          <div class="ov-cell"></div><div class="ov-cell ov-center"></div><div class="ov-cell"></div>
+          <div class="ov-cell"></div><div class="ov-center"></div><div class="ov-cell"></div>
           <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
         </div>
       </div>
       <div class="action-buttons">
-        <button class="btn-primary" onclick="takePhoto()">📸 拍照识别</button>
+        <button class="btn-primary" onclick="takePhoto()">拍照识别</button>
         <button class="btn-secondary" onclick="skipPhoto()">跳过拍照，手动填色</button>
       </div>
     </div>
@@ -134,11 +134,11 @@
       var area = document.getElementById("cameraArea");
       var existing = document.getElementById("video");
       if (!existing) {
-        area.innerHTML = "<video id=\"video\" autoplay playsinline></video>" +
-          "<div class=\"overlay-grid\" id=\"overlayGrid\">" +
-          "<div class=\"ov-cell\"></div><div class=\"ov-cell\"></div><div class=\"ov-cell\"></div>" +
-          "<div class=\"ov-cell\"></div><div class=\"ov-cell ov-center\"></div><div class=\"ov-cell\"></div>" +
-          "<div class=\"ov-cell\"></div><div class=\"ov-cell\"></div><div class=\"ov-cell\"></div></div>";
+        area.innerHTML = '<video id="video" autoplay playsinline></video>' +
+          '<div class="overlay-grid" id="overlayGrid">' +
+          '<div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>' +
+          '<div class="ov-cell"></div><div class="ov-center"></div><div class="ov-cell"></div>' +
+          '<div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div></div>';
       }
       var video = document.getElementById("video");
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -152,7 +152,7 @@
 
     function showCameraFallback() {
       var area = document.getElementById("cameraArea");
-      area.innerHTML = "<div class=\"camera-placeholder\"><div class=\"camera-icon-big\">📷</div><div>相机不可用，跳过拍照直接填色</div></div>";
+      area.innerHTML = '<div class="camera-placeholder"><div class="camera-icon-big">📷</div><div>相机不可用，跳过拍照直接填色</div></div>';
     }
 
     function stopCamera() { if (stream) { stream.getTracks().forEach(function(t) { t.stop(); }); stream = null; } }
@@ -169,18 +169,15 @@
       return best;
     }
 
-    // 在 capturedCanvas 上按照九宫格覆盖区域取每块中心颜色
     function autoDetectColors() {
       if (!capturedCanvas) return;
       var ctx = capturedCanvas.getContext("2d");
       var w = capturedCanvas.width, h = capturedCanvas.height;
-      // 九宫格覆盖画面中央一个正方形区域（与视频上的 overlay 对齐）
       var size = Math.min(w, h);
       var ox = Math.floor((w - size) / 2);
       var oy = Math.floor((h - size) / 2);
       for (var r = 0; r < 3; r++) {
         for (var c = 0; c < 3; c++) {
-          // 每块中心，再向内收缩避免黑边框
           var cellW = size / 3;
           var cx = Math.floor(ox + cellW * (c + 0.5));
           var cy = Math.floor(oy + cellW * (r + 0.5));
