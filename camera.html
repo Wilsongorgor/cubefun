@@ -89,7 +89,7 @@
 
     var faceAt = CubeOrient.identity();
     var recorded = {};
-    var history = [];
+    var faceHistory = [];
     var currentColors = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
     var tempFill = -1;
     var stream = null;
@@ -108,7 +108,7 @@
       document.getElementById("capturePhase").style.display = "block";
       document.getElementById("editPhase").style.display = "none";
       document.getElementById("rotateSection").style.display = "none";
-      document.getElementById("prevBtn").style.display = (history.length > 0) ? "block" : "none";
+      document.getElementById("prevBtn").style.display = (faceHistory.length > 0) ? "block" : "none";
       document.getElementById("retakeBtn").style.display = "none";
       document.getElementById("photoPreview").style.display = "none";
       var pf = CubeOrient.front(faceAt);
@@ -271,7 +271,7 @@
 
     function confirmFace() {
       for (var i = 0; i < 9; i++) { if (currentColors[i] < 0) { showToast("请填完所有 9 格"); return; } }
-      history.push(faceAt.slice());
+      faceHistory.push(faceAt.slice());
       recorded[CubeOrient.front(faceAt)] = currentColors.slice();
       if (recordedCount() >= 6) {
         buildAndSolve();
@@ -290,8 +290,8 @@
     }
 
     function prevFace() {
-      if (history.length === 0) return;
-      faceAt = history.pop();
+      if (faceHistory.length === 0) return;
+      faceAt = faceHistory.pop();
       initStep();
     }
 
