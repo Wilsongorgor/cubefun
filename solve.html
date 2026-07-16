@@ -7,8 +7,23 @@
   <link rel="icon" href="images/icon.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/cube.js"></script>
-  <script src="js/solver.js"></script>
+  
+  
+  
+  
+  <script src="js/kociemba_solver.js"></script>
+  <script src="js/solver_kociemba.js"></script>
   <script src="js/app.js"></script>
+  <script>
+    // 预计算求解器剪枝表（仅需一次），避免首次求解卡顿/失败
+    (function () {
+      try {
+        if (window.SolverModule && window.SolverModule.Cube && window.SolverModule.Cube.initSolver) {
+          window.SolverModule.Cube.initSolver();
+        }
+      } catch (e) { /* 忽略，求解时再尝试 */ }
+    })();
+  </script>
 </head>
 <body>
   <div class="page solve-page" id="app">

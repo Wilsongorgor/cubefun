@@ -7,7 +7,7 @@
   <link rel="icon" href="images/icon.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/cube.js"></script>
-  <script src="js/solver.js"></script>
+  <script src="js/orient.js"></script>
   <script src="js/app.js"></script>
 </head>
 <body>
@@ -22,7 +22,7 @@
     <div class="step-indicator" id="stepIndicator"></div>
 
     <div class="grid-section">
-      <div class="grid-label">点击格子选择颜色</div>
+      <div class="grid-label">把魔方朝向你的这一面，按你看到的样子填好 9 格</div>
       <div class="cube-grid" id="cubeGrid"></div>
     </div>
 
@@ -36,6 +36,16 @@
       <div class="action-row">
         <button class="btn-secondary" id="prevBtn" onclick="prevFace()" style="display:none;">← 上一面</button>
         <button class="btn-small danger" onclick="clearAll()">清空重填</button>
+      </div>
+    </div>
+
+    <div class="rotate-section" id="rotateSection" style="display:none;">
+      <div class="rotate-label">这一面填好了！把魔方翻到另一面，然后点对应的方向：</div>
+      <div class="rotate-grid">
+        <button class="btn-rot" onclick="doRotate('up')">↑ 向上翻</button>
+        <button class="btn-rot" onclick="doRotate('left')">← 向左翻</button>
+        <button class="btn-rot" onclick="doRotate('right')">→ 向右翻</button>
+        <button class="btn-rot" onclick="doRotate('down')">↓ 向下翻</button>
       </div>
     </div>
   </div>
@@ -52,58 +62,63 @@
   </div>
 
   <script>
-    var FACE_ORDER = [
-      { face: 0, name: "上面 (U) 白色", hint: "请填上面（白色中心）" },
-      { face: 1, name: "下面 (D) 黄色", hint: "请填下面（黄色中心）" },
-      { face: 2, name: "前面 (F) 绿色", hint: "请填前面（绿色中心）" },
-      { face: 3, name: "后面 (B) 蓝色", hint: "请填后面（蓝色中心）" },
-      { face: 4, name: "右面 (R) 红色", hint: "请填右面（红色中心）" },
-      { face: 5, name: "左面 (L) 橙色", hint: "请填左面（橙色中心）" }
+    var COLORS = [
+      { hex: "#ffffff", name: "白" }, { hex: "#ffd500", name: "黄" },
+      { hex: "#00b16a", name: "绿" }, { hex: "#0051ba", name: "蓝" },
+      { hex: "#b71234", name: "红" }, { hex: "#ff5800", name: "橙" }
     ];
 
-    var currentStep = 0, totalSteps = 6, tempFill = -1;
-    var faceColors = [], allFaces = [];
-    var COLORS = [
-      { hex: '#ffffff', name: '白' }, { hex: '#ffd500', name: '黄' },
-      { hex: '#00b16a', name: '绿' }, { hex: '#0051ba', name: '蓝' },
-      { hex: '#b71234', name: '红' }, { hex: '#ff5800', name: '橙' }
-    ];
+    var faceAt = CubeOrient.identity();
+    var recorded = {};            // physicalFaceIndex -> [9 colors]
+    var history = [];             // 已经确认过的 faceAt 快照，用于“上一面”
+    var currentColors = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
+    var tempFill = -1;
+    var stepCount = 0;
+
+    // 已经记录过的物理面数量
+    function recordedCount() { var n = 0; for (var k in recorded) if (recorded.hasOwnProperty(k)) n++; return n; }
 
     function initStep() {
-      var info = FACE_ORDER[currentStep];
-      document.getElementById('faceTitle').textContent = info.name;
-      document.getElementById('hintText').textContent = info.hint;
-      document.getElementById('stepIndicator').textContent = '第 ' + (currentStep+1) + ' / ' + totalSteps + ' 面';
-      var pb = document.getElementById('progressBar');
-      pb.innerHTML = '';
-      for (var i = 0; i < totalSteps; i++) {
-        var d = document.createElement('div'); d.className = 'progress-dot';
-        if (i < currentStep) d.className += ' done'; else if (i === currentStep) d.className += ' active';
-        pb.appendChild(d);
-      }
-      faceColors = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
-      faceColors[4] = info.face;
+      document.getElementById("faceTitle").textContent = "当前朝向的面（第 " + (recordedCount() + 1) + " 面）";
+      document.getElementById("hintText").textContent = "看魔方朝向你的这一面：上排是你手上方的颜色，左列是你左手边的颜色。";
+      document.getElementById("stepIndicator").textContent = "已记录 " + recordedCount() + " / 6 面";
+      renderProgress();
+      currentColors = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
       tempFill = -1;
-      document.getElementById('prevBtn').style.display = currentStep > 0 ? 'block' : 'none';
+      document.getElementById("rotateSection").style.display = "none";
+      document.getElementById("prevBtn").style.display = (history.length > 0) ? "block" : "none";
+      // 如果该物理面已经记录过，回显之前填的内容
+      var pf = CubeOrient.front(faceAt);
+      if (recorded[pf]) currentColors = recorded[pf].slice();
       renderGrid();
       renderColorPicker();
     }
 
+    function renderProgress() {
+      var pb = document.getElementById("progressBar");
+      pb.innerHTML = "";
+      for (var i = 0; i < 6; i++) {
+        var d = document.createElement("div");
+        d.className = "progress-dot";
+        if (i < recordedCount()) d.className += " done";
+        else if (i === recordedCount()) d.className += " active";
+        pb.appendChild(d);
+      }
+    }
+
     function renderGrid() {
-      var grid = [
-        [faceColors[0]>=0?COLORS[faceColors[0]].hex:'#eee', faceColors[1]>=0?COLORS[faceColors[1]].hex:'#eee', faceColors[2]>=0?COLORS[faceColors[2]].hex:'#eee'],
-        [faceColors[3]>=0?COLORS[faceColors[3]].hex:'#eee', faceColors[4]>=0?COLORS[faceColors[4]].hex:'#eee', faceColors[5]>=0?COLORS[faceColors[5]].hex:'#eee'],
-        [faceColors[6]>=0?COLORS[faceColors[6]].hex:'#eee', faceColors[7]>=0?COLORS[faceColors[7]].hex:'#eee', faceColors[8]>=0?COLORS[faceColors[8]].hex:'#eee']
-      ];
-      var container = document.getElementById('cubeGrid'); container.innerHTML = '';
+      var container = document.getElementById("cubeGrid");
+      container.innerHTML = "";
       for (var r = 0; r < 3; r++) {
-        var rowDiv = document.createElement('div'); rowDiv.className = 'grid-row';
+        var rowDiv = document.createElement("div");
+        rowDiv.className = "grid-row";
         for (var c = 0; c < 3; c++) {
-          var cell = document.createElement('div'); var idx = r*3+c;
-          cell.className = 'grid-cell' + (tempFill===idx?' selected':'') + (idx===4?' center-cell':'');
-          cell.style.backgroundColor = grid[r][c];
-          cell.onclick = (function(i) { return function() { if(i===4){showToast('中心色已确定');return;} tempFill=i;renderGrid();renderColorPicker();}; })(idx);
-          if (idx === 4) { var m = document.createElement('div'); m.className = 'center-marker'; m.textContent = '中'; cell.appendChild(m); }
+          var idx = r * 3 + c;
+          var cell = document.createElement("div");
+          cell.className = "grid-cell";
+          if (tempFill === idx) cell.className += " selected";
+          cell.style.backgroundColor = (currentColors[idx] >= 0) ? COLORS[currentColors[idx]].hex : "#eee";
+          cell.onclick = (function(i) { return function() { tempFill = i; renderGrid(); renderColorPicker(); }; })(idx);
           rowDiv.appendChild(cell);
         }
         container.appendChild(rowDiv);
@@ -111,55 +126,79 @@
     }
 
     function renderColorPicker() {
-      var container = document.getElementById('colorPicker'); container.innerHTML = '';
+      var container = document.getElementById("colorPicker");
+      container.innerHTML = "";
       for (var i = 0; i < COLORS.length; i++) {
-        var sw = document.createElement('div'); sw.className = 'color-swatch';
+        var sw = document.createElement("div");
+        sw.className = "color-swatch";
         sw.style.backgroundColor = COLORS[i].hex;
         sw.onclick = (function(idx) { return function() {
-          if(tempFill<0){showToast('请先点击要填的格子');return;}
-          faceColors[tempFill]=idx; tempFill=-1; renderGrid();
+          if (tempFill < 0) { showToast("请先点击要填的格子"); return; }
+          currentColors[tempFill] = idx;
+          tempFill = -1;
+          renderGrid();
         }; })(i);
-        var l = document.createElement('div'); l.className = 'swatch-name'; l.textContent = COLORS[i].name;
-        sw.appendChild(l); container.appendChild(sw);
+        var label = document.createElement("div");
+        label.className = "swatch-name";
+        label.textContent = COLORS[i].name;
+        sw.appendChild(label);
+        container.appendChild(sw);
       }
     }
 
     function confirmFace() {
-      for (var i = 0; i < 9; i++) { if (faceColors[i] < 0) { showToast('请填完所有格子'); return; } }
-      allFaces[FACE_ORDER[currentStep].face] = faceColors.slice();
-      var ns = currentStep + 1;
-      if (ns >= 6) {
-        var state = new Array(54);
-        for (var f = 0; f < 6; f++) for (var i = 0; i < 9; i++) state[CubeEngine.FS[f]+i] = allFaces[f][i];
-        CubeState.cubeData = state;
-        CubeState.scanMode = 'manual';
-        location.href = 'solve.html';
+      for (var i = 0; i < 9; i++) { if (currentColors[i] < 0) { showToast("请填完所有 9 格"); return; } }
+      // 保存当前朝向的物理面
+      history.push(faceAt.slice());
+      recorded[CubeOrient.front(faceAt)] = currentColors.slice();
+      stepCount++;
+      if (recordedCount() >= 6) {
+        buildAndSolve();
       } else {
-        showModal('当前面已确认', '下一步：将魔方翻转至「'+FACE_ORDER[ns].name+'」后点击确定', function(){ currentStep=ns; initStep(); });
+        document.getElementById("rotateSection").style.display = "block";
+        showToast("已记录，请翻到下一面");
       }
     }
 
-    function prevFace() {
-      if(currentStep<=0)return;
-      allFaces[FACE_ORDER[--currentStep].face] = null;
+    function doRotate(dir) {
+      if (dir === "right") faceAt = CubeOrient.rotRight(faceAt);
+      else if (dir === "left") faceAt = CubeOrient.rotLeft(faceAt);
+      else if (dir === "up") faceAt = CubeOrient.rotUp(faceAt);
+      else if (dir === "down") faceAt = CubeOrient.rotDown(faceAt);
       initStep();
     }
 
-    function clearAll() {
-      var info = FACE_ORDER[currentStep];
-      faceColors = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
-      faceColors[4] = info.face;
-      tempFill = -1;
-      renderGrid();
+    function prevFace() {
+      if (history.length === 0) return;
+      faceAt = history.pop();
+      // 退回后，当前面的记录保留在 recorded 中由 initStep 回显
+      initStep();
     }
 
-    function showToast(m) { var t=document.getElementById('toast'); t.textContent=m; t.className='toast show'; setTimeout(function(){t.className='toast';},2000); }
+    function clearAll() { currentColors = [-1,-1,-1,-1,-1,-1,-1,-1,-1]; tempFill = -1; renderGrid(); }
 
-    function showModal(t,c,onOk) {
-      document.getElementById('modalTitle').textContent=t;
-      document.getElementById('modalContent').textContent=c;
-      document.getElementById('modalOverlay').className='modal-overlay show';
-      document.getElementById('modalConfirmBtn').onclick=function(){ document.getElementById('modalOverlay').className='modal-overlay'; if(onOk)onOk(); };
+    function buildAndSolve() {
+      // 把每个已记录的物理面放到它对应的 FS 槽位
+      var state = new Array(54);
+      for (var pf = 0; pf < 6; pf++) {
+        if (!recorded[pf]) { showToast("还有面没记录"); return; }
+        for (var i = 0; i < 9; i++) { state[CubeEngine.FS[pf] + i] = recorded[pf][i]; }
+      }
+      CubeState.cubeData = state;
+      CubeState.scanMode = "manual";
+      location.href = "solve.html";
+    }
+
+    function showToast(m) { var t = document.getElementById("toast"); t.textContent = m; t.className = "toast show"; setTimeout(function() { t.className = "toast"; }, 2000); }
+
+    function showModal(t, c, onOk) {
+      document.getElementById("modalTitle").textContent = t;
+      document.getElementById("modalContent").textContent = c;
+      document.getElementById("modalOverlay").className = "modal-overlay show";
+      document.getElementById("modalConfirmBtn").onclick = function() {
+        document.getElementById("modalOverlay").className = "modal-overlay";
+        if (onOk) onOk();
+      };
     }
 
     initStep();
