@@ -7,8 +7,18 @@
   <link rel="icon" href="images/icon.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/cube.js"></script>
-  <script src="js/solver.js"></script>
+  <script src="js/kociemba_solver.js"></script>
+  <script src="js/solver_kociemba.js"></script>
   <script src="js/app.js"></script>
+  <script>
+    (function () {
+      try {
+        if (window.SolverModule && window.SolverModule.Cube && window.SolverModule.Cube.initSolver) {
+          window.SolverModule.Cube.initSolver();
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <div class="page solve-page" id="app">
@@ -32,7 +42,17 @@
       </div>
       <div class="step-text" id="stepText"></div>
       <div class="move-highlight" id="moveHighlight" style="display:none;"></div>
-      <div class="cube-all-faces" id="cubeAllFaces"></div>
+      <div class="solve-scene" id="solveScene">
+        <div class="solve-cube" id="solveCube3d">
+          <div class="solve-face f-U" data-face="0"></div>
+          <div class="solve-face f-D" data-face="1"></div>
+          <div class="solve-face f-F" data-face="2"></div>
+          <div class="solve-face f-B" data-face="3"></div>
+          <div class="solve-face f-R" data-face="4"></div>
+          <div class="solve-face f-L" data-face="5"></div>
+        </div>
+      </div>
+      <div class="cube-progress">拖动可旋转查看 · 高亮的一面就是要转动的面</div>
       <div class="nav-buttons" id="navButtons">
         <div class="nav-row">
           <button class="btn-secondary" id="prevStepBtn" onclick="prevStep()">← 上一步</button>
@@ -52,8 +72,6 @@
 
   <script>
     var cubeState = null, solution = [], currentStep = -1, totalSteps = 0;
-    var FACE_LABELS = ["上(U)","下(D)","前(F)","后(B)","右(R)","左(L)"];
-    var FACE_DISPLAY_ORDER = [0,2,4,1,3,5];
 
     function init() {
       if (!CubeState || !CubeState.cubeData) {
@@ -69,19 +87,13 @@
       setTimeout(function() {
         try {
           var result = CubeSolver.solve(cubeState);
-          if (result.error) {
-            showError(result.error);
-            return;
-          }
+          if (result.error) { showError(result.error); return; }
           solution = result.solution;
           totalSteps = solution.length;
           document.getElementById("solvingSection").style.display = "none";
           document.getElementById("solutionSection").style.display = "block";
-          if (totalSteps === 0) {
-            showSolved();
-          } else {
-            goToStep(0);
-          }
+          if (totalSteps === 0) { showSolved(); }
+          else { goToStep(0); }
         } catch (err) {
           showError("求解失败: " + (err.message || "未知错误"));
         }
@@ -92,11 +104,9 @@
       if (stepIndex < 0 || stepIndex >= totalSteps) return;
       var move = solution[stepIndex];
       var displayState = cubeState.slice();
-      for (var i = 0; i <= stepIndex; i++) {
-        displayState = CubeEngine.applyMove(displayState, solution[i]);
-      }
-      var stepText = CubeSolver.getStepText(move, stepIndex + 1, totalSteps);
-      document.getElementById("stepText").textContent = stepText;
+      for (var i = 0; i <= stepIndex; i++) displayState = CubeEngine.applyMove(displayState, solution[i]);
+
+      document.getElementById("stepText").textContent = CubeSolver.getStepText(move, stepIndex + 1, totalSteps);
 
       var base = move.replace("'","").replace("2","");
       var fi = CubeEngine.FACE_SHORT.indexOf(base);
@@ -105,47 +115,29 @@
         document.getElementById("moveHighlight").style.display = "block";
       }
 
-      renderFaceViews(displayState);
+      renderSolutionCube(displayState, fi);
 
       document.getElementById("progressFill").style.width = ((stepIndex + 1) / totalSteps * 100).toFixed(0) + "%";
-
       document.getElementById("prevStepBtn").className = "btn-secondary" + (stepIndex <= 0 ? " disabled" : "");
       document.getElementById("nextStepBtn").className = "btn-primary" + (stepIndex >= totalSteps - 1 ? " disabled" : "");
 
       currentStep = stepIndex;
-
-      if (stepIndex === totalSteps - 1) {
-        showSolved();
-      } else {
-        document.getElementById("solvedSection").style.display = "none";
-        document.getElementById("navButtons").style.display = "block";
-      }
+      if (stepIndex === totalSteps - 1) showSolved();
+      else { document.getElementById("solvedSection").style.display = "none"; document.getElementById("navButtons").style.display = "block"; }
     }
 
-    function renderFaceViews(state) {
-      var container = document.getElementById("cubeAllFaces");
-      container.innerHTML = "";
-      for (var oi = 0; oi < FACE_DISPLAY_ORDER.length; oi++) {
-        var f = FACE_DISPLAY_ORDER[oi];
-        var fv = document.createElement("div"); fv.className = "face-view";
-        var label = document.createElement("div"); label.className = "face-label";
-        label.textContent = FACE_LABELS[f];
-        fv.appendChild(label);
-        var grid = document.createElement("div"); grid.className = "mini-grid";
-        for (var r = 0; r < 3; r++) {
-          var row = document.createElement("div"); row.className = "mini-row";
-          for (var c = 0; c < 3; c++) {
-            var cell = document.createElement("div"); cell.className = "mini-cell";
-            if (r === 1 && c === 1) cell.className += " center";
-            var idx = CubeEngine.FS[f] + r * 3 + c;
-            cell.style.backgroundColor = CubeEngine.COLOR_HEX[state[idx]];
-            row.appendChild(cell);
-          }
-          grid.appendChild(row);
+    function renderSolutionCube(state, highlightFace) {
+      document.querySelectorAll(".solve-face").forEach(function (faceEl) {
+        var fi = parseInt(faceEl.getAttribute("data-face"), 10);
+        faceEl.innerHTML = "";
+        for (var i = 0; i < 9; i++) {
+          var stk = document.createElement("div");
+          stk.className = "stk";
+          stk.style.backgroundColor = CubeEngine.COLOR_HEX[state[CubeEngine.FS[fi] + i]];
+          faceEl.appendChild(stk);
         }
-        fv.appendChild(grid);
-        container.appendChild(fv);
-      }
+        faceEl.style.boxShadow = (fi === highlightFace) ? "0 0 0 4px #ffd500" : "0 0 0 2px rgba(0,0,0,0.4)";
+      });
     }
 
     function showSolved() {
@@ -159,19 +151,22 @@
       document.getElementById("errorText").textContent = msg;
     }
 
-    function nextStep() {
-      if (currentStep >= totalSteps - 1) return;
-      goToStep(currentStep + 1);
-    }
+    function nextStep() { if (currentStep >= totalSteps - 1) return; goToStep(currentStep + 1); }
+    function prevStep() { if (currentStep <= 0) return; goToStep(currentStep - 1); }
+    function restart() { goToStep(0); }
 
-    function prevStep() {
-      if (currentStep <= 0) return;
-      goToStep(currentStep - 1);
-    }
-
-    function restart() {
-      goToStep(0);
-    }
+    // 拖动旋转解法魔方
+    (function () {
+      var scene = document.getElementById("solveScene");
+      var cube = document.getElementById("solveCube3d");
+      var rx = -25, ry = -35, dragging = false, lx = 0, ly = 0;
+      function apply() { cube.style.transform = "rotateX(" + rx + "deg) rotateY(" + ry + "deg)"; }
+      scene.addEventListener("pointerdown", function (e) { dragging = true; lx = e.clientX; ly = e.clientY; scene.setPointerCapture(e.pointerId); });
+      scene.addEventListener("pointermove", function (e) { if (!dragging) return; ry += (e.clientX - lx) * 0.6; rx -= (e.clientY - ly) * 0.6; rx = Math.max(-90, Math.min(90, rx)); lx = e.clientX; ly = e.clientY; apply(); });
+      scene.addEventListener("pointerup", function () { dragging = false; });
+      scene.addEventListener("pointercancel", function () { dragging = false; });
+      apply();
+    })();
 
     init();
   </script>

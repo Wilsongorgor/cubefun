@@ -115,3 +115,44 @@ button { font-family:inherit; cursor:pointer; border:none; outline:none; }
 .modal-content { font-size:14px; color:var(--text-light); margin-bottom:20px; line-height:1.5; }
 .modal-buttons { display:flex; gap:10px; }
 .modal-buttons .btn-primary, .modal-buttons .btn-secondary { flex:1; font-size:14px; padding:10px 16px; }
+
+/* ===== 3D 魔方 ===== */
+.cube-scene { width:240px; height:240px; margin:10px auto 4px; perspective:700px; touch-action:none; user-select:none; }
+.cube-scene.dragging { cursor:grabbing; }
+.cube { position:relative; width:100%; height:100%; transform-style:preserve-3d; transform:rotateX(-25deg) rotateY(-35deg); transition:transform 0.05s linear; }
+.cube-face { position:absolute; width:160px; height:160px; left:40px; top:40px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); background:#111; gap:3px; padding:3px; border-radius:6px; box-shadow:0 0 0 2px rgba(0,0,0,0.4); cursor:pointer; }
+.cube-face .stk { border-radius:3px; background:#444; transition:background 0.15s; }
+.cube-face.recorded { box-shadow:0 0 0 3px #667eea; }
+.cube-face.active { box-shadow:0 0 0 4px #ffd500; }
+.cube-face.f-U { transform:rotateX(90deg) translateZ(80px); }
+.cube-face.f-D { transform:rotateX(-90deg) translateZ(80px); }
+.cube-face.f-F { transform:translateZ(80px); }
+.cube-face.f-B { transform:rotateY(180deg) translateZ(80px); }
+.cube-face.f-R { transform:rotateY(90deg) translateZ(80px); }
+.cube-face.f-L { transform:rotateY(-90deg) translateZ(80px); }
+.cube-hint { text-align:center; font-size:13px; color:var(--text-light); margin-bottom:8px; }
+.cube-progress { text-align:center; font-size:13px; color:var(--text-muted); margin:4px 0 12px; }
+
+/* 编辑面板（点击某个面后弹出） */
+.editor-panel { background:white; border-radius:var(--radius); padding:16px; margin:0 0 16px; box-shadow:var(--shadow); }
+.editor-panel.hidden { display:none; }
+.editor-title { font-size:15px; font-weight:700; color:var(--text-dark); text-align:center; margin-bottom:4px; }
+.editor-sub { font-size:12px; color:var(--text-light); text-align:center; margin-bottom:12px; }
+.editor-grid { width:210px; margin:0 auto 12px; background:#333; padding:4px; border-radius:10px; }
+.editor-row { display:flex; }
+.editor-cell { width:70px; height:70px; border:1.5px solid #444; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.editor-cell.selected { border:3px solid var(--primary); transform:scale(1.05); z-index:1; }
+.editor-actions { display:flex; flex-direction:column; gap:12px; }
+
+/* 3D 解法查看器 */
+.solve-scene { width:200px; height:200px; margin:8px auto; perspective:600px; touch-action:none; user-select:none; }
+.solve-cube { position:relative; width:100%; height:100%; transform-style:preserve-3d; transform:rotateX(-25deg) rotateY(-35deg); }
+.solve-face { position:absolute; width:130px; height:130px; left:35px; top:35px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); background:#111; gap:2px; padding:2px; border-radius:5px; }
+.solve-face .stk { border-radius:2px; }
+.solve-face.f-U { transform:rotateX(90deg) translateZ(65px); }
+.solve-face.f-D { transform:rotateX(-90deg) translateZ(65px); }
+.solve-face.f-F { transform:translateZ(65px); }
+.solve-face.f-B { transform:rotateY(180deg) translateZ(65px); }
+.solve-face.f-R { transform:rotateY(90deg) translateZ(65px); }
+.solve-face.f-L { transform:rotateY(-90deg) translateZ(65px); }
+
