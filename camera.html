@@ -170,17 +170,28 @@
     (function () {
       var scene = document.getElementById("cubeScene");
       var cube = document.getElementById("cube3d");
-      var rx = -25, ry = -35, dragging = false, lx = 0, ly = 0;
+      var rx = -25, ry = -35, dragging = false, lx = 0, ly = 0, downX = 0, downY = 0, moved = false, downFace = null;
       function apply() { cube.style.transform = "rotateX(" + rx + "deg) rotateY(" + ry + "deg)"; }
-      scene.addEventListener("pointerdown", function (e) { dragging = true; lx = e.clientX; ly = e.clientY; scene.classList.add("dragging"); scene.setPointerCapture(e.pointerId); });
-      scene.addEventListener("pointermove", function (e) { if (!dragging) return; ry += (e.clientX - lx) * 0.6; rx -= (e.clientY - ly) * 0.6; rx = Math.max(-90, Math.min(90, rx)); lx = e.clientX; ly = e.clientY; apply(); });
-      scene.addEventListener("pointerup", function () { dragging = false; scene.classList.remove("dragging"); });
-      scene.addEventListener("pointercancel", function () { dragging = false; scene.classList.remove("dragging"); });
-      scene.addEventListener("click", function (e) {
-        if (Math.abs(e.movementX) > 3 || Math.abs(e.movementY) > 3) return;
-        var faceEl = e.target.closest(".cube-face");
-        if (faceEl) openEditor(parseInt(faceEl.getAttribute("data-face"), 10));
+      scene.addEventListener("pointerdown", function (e) {
+        dragging = true; moved = false;
+        lx = e.clientX; ly = e.clientY; downX = e.clientX; downY = e.clientY;
+        var t = (e.target.closest && e.target.closest(".cube-face")) || e.target;
+        downFace = t && t.getAttribute ? t.getAttribute("data-face") : null;
+        scene.classList.add("dragging");
+        try { scene.setPointerCapture(e.pointerId); } catch (err) {}
       });
+      scene.addEventListener("pointermove", function (e) {
+        if (!dragging) return;
+        if (Math.abs(e.clientX - downX) > 5 || Math.abs(e.clientY - downY) > 5) moved = true;
+        ry += (e.clientX - lx) * 0.6; rx -= (e.clientY - ly) * 0.6;
+        rx = Math.max(-90, Math.min(90, rx));
+        lx = e.clientX; ly = e.clientY; apply();
+      });
+      scene.addEventListener("pointerup", function (e) {
+        dragging = false; scene.classList.remove("dragging");
+        if (!moved && downFace !== null) openEditor(parseInt(downFace, 10));
+      });
+      scene.addEventListener("pointercancel", function () { dragging = false; scene.classList.remove("dragging"); });
       apply();
     })();
 
