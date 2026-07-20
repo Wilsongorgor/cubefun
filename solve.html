@@ -7,8 +7,8 @@
   <link rel="icon" href="images/icon.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/cube.js"></script>
-  <script src="js/kociemba_solver.js"></script>
-  <script src="js/solver_kociemba.js"></script>
+  <script src="js/min2phase.js"></script>
+  <script src="js/solver_cubing.js"></script>
   <script src="js/app.js"></script>
   <script>
     (function () {
@@ -86,6 +86,8 @@
       document.getElementById("solvingSection").style.display = "flex";
       setTimeout(function() {
         try {
+          var CubeSolver = window.getCubeSolver();
+          window.CubeSolverRef = CubeSolver;
           var result = CubeSolver.solve(cubeState);
           if (result.error) { showError(result.error); return; }
           solution = result.solution;
@@ -95,7 +97,7 @@
           if (totalSteps === 0) { showSolved(); }
           else { goToStep(0); }
         } catch (err) {
-          showError("求解失败: " + (err.message || "未知错误"));
+          showError("求解失败: " + (err && err.message ? err.message : "未知错误"));
         }
       }, 100);
     }
@@ -106,7 +108,7 @@
       var displayState = cubeState.slice();
       for (var i = 0; i <= stepIndex; i++) displayState = CubeEngine.applyMove(displayState, solution[i]);
 
-      document.getElementById("stepText").textContent = CubeSolver.getStepText(move, stepIndex + 1, totalSteps);
+      document.getElementById("stepText").textContent = window.CubeSolverRef.getStepText(move, stepIndex + 1, totalSteps);
 
       var base = move.replace("'","").replace("2","");
       var fi = CubeEngine.FACE_SHORT.indexOf(base);
