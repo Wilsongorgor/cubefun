@@ -18,7 +18,10 @@ var FACE_COLORS=SC;
 
 var FACE_SHORT=["U","D","F","B","R","L"];
 
-var FACE_NAMES=["top (U)","bottom (D)","front (F)","back (B)","right (R)","left (L)"];
+var FACE_NAMES=["\u4e0a\u9762 (U)","\u4e0b\u9762 (D)","\u524d\u9762 (F)","\u540e\u9762 (B)","\u53f3\u9762 (R)","\u5de6\u9762 (L)"];
+
+// 每个面的中心块索引（FS[f] + 4）
+var FACE_CENTER=[4,13,22,31,40,49];
 
 
 
@@ -66,9 +69,33 @@ function applyAlg(a,alg){var m=alg.trim().split(/\s+/).filter(function(s){return
 
 
 
-window.CubeEngine = {U,D,F,B,R,L,FS,SC,FACE_COLORS,FACE_SHORT,FACE_NAMES,
+// 校验 54 贴纸状态是否"形式上"合法：长度、取值、每色 9 个、六个中心互不相同。
+// 通过这里只代表"像个魔方"，是否真的可解由求解器验证。
+function validate(c){
+  if(!c || c.length !== 54) return { ok:false, error:"\u9b54\u65b9\u6570\u636e\u4e0d\u5b8c\u6574\uff0c\u8bf7\u91cd\u65b0\u91c7\u96c6" };
+  var counts=[0,0,0,0,0,0];
+  for(var i=0;i<54;i++){
+    var v=c[i];
+    if(typeof v !== "number" || v!==(v|0) || v<0 || v>5)
+      return { ok:false, error:"\u9b54\u65b9\u989c\u8272\u8bc6\u522b\u6709\u8bef\uff0c\u8bf7\u91cd\u65b0\u91c7\u96c6" };
+    counts[v]++;
+  }
+  for(var k=0;k<6;k++){
+    if(counts[k]!==9)
+      return { ok:false, error:"\u6bcf\u79cd\u989c\u8272\u5fc5\u987b\u6070\u597d 9 \u4e2a\uff08\u73b0\u5728\u7b2c " + (k+1) + " \u79cd\u989c\u8272\u662f " + counts[k] + " \u4e2a\uff09" };
+  }
+  var seen={};
+  for(var f=0;f<6;f++){
+    var ctr=c[FACE_CENTER[f]];
+    if(seen[ctr]) return { ok:false, error:"\u4e24\u4e2a\u9762\u7684\u4e2d\u5fc3\u989c\u8272\u76f8\u540c\uff0c\u8bf7\u68c0\u67e5\u4e2d\u5fc3\u5757" };
+    seen[ctr]=1;
+  }
+  return { ok:true, error:null };
+}
+
+window.CubeEngine = {U,D,F,B,R,L,FS,SC,FACE_COLORS,FACE_SHORT,FACE_NAMES,FACE_CENTER,
 
 solvedCube,cloneCube,equalCube,applyMove,applyAlg,COLOR_HEX,COLOR_NAMES,
 
-getFaceColors,setFaceColors,isSolved,indexToFace};
+getFaceColors,setFaceColors,isSolved,indexToFace,validate};
 

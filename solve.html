@@ -2,175 +2,73 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>解魔方 - 乐玩魔方</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#4f6ef7">
+  <title>还原步骤 · 乐玩魔方</title>
   <link rel="icon" href="images/icon.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/cube.js"></script>
-  <script src="js/min2phase.js"></script>
-  <script src="js/solver_cubing.js"></script>
   <script src="js/app.js"></script>
-  <script>
-    (function () {
-      try {
-        if (window.SolverModule && window.SolverModule.Cube && window.SolverModule.Cube.initSolver) {
-          window.SolverModule.Cube.initSolver();
-        }
-      } catch (e) {}
-    })();
-  </script>
+  <script src="js/min2phase.js"></script>
+  <script src="js/solver.js"></script>
+  <script src="js/solve.js"></script>
 </head>
 <body>
-  <div class="page solve-page" id="app">
-    <div class="nav-bar">
-      <button class="nav-back" onclick="location.href='index.html'">‹</button>
-      <div class="nav-title">解魔方</div>
-    </div>
-    <div id="solvingSection" class="solving-section" style="display:none;">
-      <div class="solving-icon">🔄</div>
-      <div class="solving-text">正在求解魔方...</div>
-      <div class="solving-sub">算法正在搜索最优解法</div>
-    </div>
-    <div id="errorSection" class="error-section" style="display:none;">
-      <div class="error-icon">⚠️</div>
-      <div class="error-text" id="errorText"></div>
-      <button class="btn-primary" onclick="location.href='index.html'">返回首页</button>
-    </div>
-    <div id="solutionSection" style="display:none;">
-      <div class="solution-progress">
-        <div class="progress-bar-fill" id="progressFill" style="width:0%;"></div>
-      </div>
-      <div class="step-text" id="stepText"></div>
-      <div class="move-highlight" id="moveHighlight" style="display:none;"></div>
-      <div class="solve-scene" id="solveScene">
-        <div class="solve-cube" id="solveCube3d">
-          <div class="solve-face f-U" data-face="0"></div>
-          <div class="solve-face f-D" data-face="1"></div>
-          <div class="solve-face f-F" data-face="2"></div>
-          <div class="solve-face f-B" data-face="3"></div>
-          <div class="solve-face f-R" data-face="4"></div>
-          <div class="solve-face f-L" data-face="5"></div>
+  <div class="page">
+    <nav class="nav-bar">
+      <a class="nav-back" href="index.html" aria-label="返回">‹</a>
+      <span class="nav-title">还原步骤</span>
+      <button class="nav-action" id="restartBtn" type="button">重看</button>
+    </nav>
+
+    <section class="state-panel" id="solvingSection">
+      <div class="spinner"></div>
+      <p class="state-title">正在求解…</p>
+      <p class="state-sub">Kociemba 两阶段算法正在搜索解法</p>
+    </section>
+
+    <section class="state-panel" id="errorSection" style="display:none">
+      <div class="state-emoji">⚠️</div>
+      <p class="state-title">算不出解法</p>
+      <p class="state-sub error" id="errorText"></p>
+      <a class="btn-primary" href="manual.html">重新填色</a>
+    </section>
+
+    <section id="solutionSection" style="display:none">
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title" id="stepText">准备中…</h2>
+          <span class="pill" id="stepPill">0 / 0</span>
         </div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <p class="move-highlight" id="moveHighlight"></p>
+
+        <div class="cube-scene" id="solveScene"><div class="cube" id="solveCube3d"></div></div>
+        <p class="hint">拖动可旋转查看。黄色高亮的一面，就是这一步要转的面。</p>
       </div>
-      <div class="cube-progress">拖动可旋转查看 · 高亮的一面就是要转动的面</div>
-      <div class="nav-buttons" id="navButtons">
-        <div class="nav-row">
-          <button class="btn-secondary" id="prevStepBtn" onclick="prevStep()">← 上一步</button>
-          <button class="btn-primary" id="nextStepBtn" onclick="nextStep()">下一步 →</button>
+
+      <div class="actions" id="navButtons">
+        <div class="action-row">
+          <button class="btn-ghost" id="prevStepBtn" type="button">← 上一步</button>
+          <button class="btn-primary" id="nextStepBtn" type="button">下一步 →</button>
         </div>
-      </div>
-      <div id="solvedSection" class="solved-section" style="display:none;">
-        <div class="solved-icon">🎉</div>
-        <div class="solved-text">魔方已还原！</div>
-        <div class="nav-row">
-          <button class="btn-secondary" onclick="restart()">重看步骤</button>
-          <button class="btn-primary" onclick="location.href='index.html'">返回首页</button>
+        <div class="action-row">
+          <button class="btn-ghost" id="playBtn" type="button">▶ 自动播放</button>
         </div>
+        <p class="hint">也可以直接用键盘 ← → 翻页，空格播放/暂停。</p>
       </div>
-    </div>
+
+      <section class="card solved-card" id="solvedSection" style="display:none">
+        <div class="state-emoji">🎉</div>
+        <p class="state-title">魔方已复原</p>
+        <p class="state-sub">照着做下来就对了，要不要再来一次？</p>
+        <div class="actions">
+          <a class="btn-primary" href="index.html">回到首页</a>
+        </div>
+      </section>
+    </section>
   </div>
 
-  <script>
-    var cubeState = null, solution = [], currentStep = -1, totalSteps = 0;
-
-    function init() {
-      if (!CubeState || !CubeState.cubeData) {
-        showError("没有魔方数据，请先通过拍照识别或手动输入采集魔方颜色");
-        return;
-      }
-      cubeState = CubeState.cubeData.slice();
-      startSolve();
-    }
-
-    function startSolve() {
-      document.getElementById("solvingSection").style.display = "flex";
-      setTimeout(function() {
-        try {
-          var CubeSolver = window.getCubeSolver();
-          window.CubeSolverRef = CubeSolver;
-          var result = CubeSolver.solve(cubeState);
-          if (result.error) { showError(result.error); return; }
-          solution = result.solution;
-          totalSteps = solution.length;
-          document.getElementById("solvingSection").style.display = "none";
-          document.getElementById("solutionSection").style.display = "block";
-          if (totalSteps === 0) { showSolved(); }
-          else { goToStep(0); }
-        } catch (err) {
-          showError("求解失败: " + (err && err.message ? err.message : "未知错误"));
-        }
-      }, 100);
-    }
-
-    function goToStep(stepIndex) {
-      if (stepIndex < 0 || stepIndex >= totalSteps) return;
-      var move = solution[stepIndex];
-      var displayState = cubeState.slice();
-      for (var i = 0; i <= stepIndex; i++) displayState = CubeEngine.applyMove(displayState, solution[i]);
-
-      document.getElementById("stepText").textContent = window.CubeSolverRef.getStepText(move, stepIndex + 1, totalSteps);
-
-      var base = move.replace("'","").replace("2","");
-      var fi = CubeEngine.FACE_SHORT.indexOf(base);
-      if (fi >= 0) {
-        document.getElementById("moveHighlight").textContent = "需要转动：" + CubeEngine.FACE_NAMES[fi];
-        document.getElementById("moveHighlight").style.display = "block";
-      }
-
-      renderSolutionCube(displayState, fi);
-
-      document.getElementById("progressFill").style.width = ((stepIndex + 1) / totalSteps * 100).toFixed(0) + "%";
-      document.getElementById("prevStepBtn").className = "btn-secondary" + (stepIndex <= 0 ? " disabled" : "");
-      document.getElementById("nextStepBtn").className = "btn-primary" + (stepIndex >= totalSteps - 1 ? " disabled" : "");
-
-      currentStep = stepIndex;
-      if (stepIndex === totalSteps - 1) showSolved();
-      else { document.getElementById("solvedSection").style.display = "none"; document.getElementById("navButtons").style.display = "block"; }
-    }
-
-    function renderSolutionCube(state, highlightFace) {
-      document.querySelectorAll(".solve-face").forEach(function (faceEl) {
-        var fi = parseInt(faceEl.getAttribute("data-face"), 10);
-        faceEl.innerHTML = "";
-        for (var i = 0; i < 9; i++) {
-          var stk = document.createElement("div");
-          stk.className = "stk";
-          stk.style.backgroundColor = CubeEngine.COLOR_HEX[state[CubeEngine.FS[fi] + i]];
-          faceEl.appendChild(stk);
-        }
-        faceEl.style.boxShadow = (fi === highlightFace) ? "0 0 0 4px #ffd500" : "0 0 0 2px rgba(0,0,0,0.4)";
-      });
-    }
-
-    function showSolved() {
-      document.getElementById("solvedSection").style.display = "flex";
-      document.getElementById("navButtons").style.display = "none";
-    }
-
-    function showError(msg) {
-      document.getElementById("solvingSection").style.display = "none";
-      document.getElementById("errorSection").style.display = "flex";
-      document.getElementById("errorText").textContent = msg;
-    }
-
-    function nextStep() { if (currentStep >= totalSteps - 1) return; goToStep(currentStep + 1); }
-    function prevStep() { if (currentStep <= 0) return; goToStep(currentStep - 1); }
-    function restart() { goToStep(0); }
-
-    // 拖动旋转解法魔方
-    (function () {
-      var scene = document.getElementById("solveScene");
-      var cube = document.getElementById("solveCube3d");
-      var rx = -25, ry = -35, dragging = false, lx = 0, ly = 0;
-      function apply() { cube.style.transform = "rotateX(" + rx + "deg) rotateY(" + ry + "deg)"; }
-      scene.addEventListener("pointerdown", function (e) { dragging = true; lx = e.clientX; ly = e.clientY; scene.setPointerCapture(e.pointerId); });
-      scene.addEventListener("pointermove", function (e) { if (!dragging) return; ry += (e.clientX - lx) * 0.6; rx -= (e.clientY - ly) * 0.6; rx = Math.max(-90, Math.min(90, rx)); lx = e.clientX; ly = e.clientY; apply(); });
-      scene.addEventListener("pointerup", function () { dragging = false; });
-      scene.addEventListener("pointercancel", function () { dragging = false; });
-      apply();
-    })();
-
-    init();
-  </script>
+  <div class="toast" id="toast"></div>
 </body>
 </html>

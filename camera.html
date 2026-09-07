@@ -2,234 +2,102 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>拍照识别 - 乐玩魔方</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#4f6ef7">
+  <title>拍照识别 · 乐玩魔方</title>
   <link rel="icon" href="images/icon.png" type="image/png">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/cube.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/camera.js"></script>
 </head>
 <body>
-  <div class="page camera-page" id="app">
-    <div class="nav-bar">
-      <button class="nav-back" onclick="history.back()">‹</button>
-      <div class="nav-title">拍照识别</div>
-    </div>
+  <div class="page">
+    <nav class="nav-bar">
+      <a class="nav-back" href="index.html" aria-label="返回">‹</a>
+      <span class="nav-title">拍照识别</span>
+      <button class="nav-action" id="skipBtn" type="button">跳过</button>
+    </nav>
 
-    <div id="capturePhase">
-      <div class="camera-area" id="cameraArea">
-        <video id="video" autoplay playsinline></video>
-        <div class="overlay-grid" id="overlayGrid">
-          <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
-          <div class="ov-cell"></div><div class="ov-center"></div><div class="ov-cell"></div>
-          <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
+    <!-- 第一步：拍照取色 -->
+    <section id="capturePhase">
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">对准魔方</h2>
+          <span class="pill" id="captureFaceName">上面 (U)</span>
         </div>
-      </div>
-      <div class="action-buttons">
-        <button class="btn-primary" onclick="takePhoto()">拍照（作为参考图）</button>
-        <button class="btn-secondary" onclick="skipPhoto()">不用拍照，直接填色</button>
-      </div>
-    </div>
 
-    <div id="fillPhase" style="display:none;">
-      <div id="refWrap" style="display:none; text-align:center; margin-bottom:10px;">
-        <div class="editor-sub">参考照片（对照它把颜色填到右侧魔方上）</div>
-        <img id="photoPreview" class="photo-preview" style="max-width:140px; display:inline-block; vertical-align:top;">
-      </div>
-      <div class="hint-text">拖动旋转魔方，点击任意一面填入它的 9 个颜色。六面都填完即可求解。</div>
-      <div class="cube-progress" id="cubeProgress">已填 0 / 6 面</div>
-      <div class="cube-scene" id="cubeScene">
-        <div class="cube" id="cube3d">
-          <div class="cube-face f-U" data-face="0"></div>
-          <div class="cube-face f-D" data-face="1"></div>
-          <div class="cube-face f-F" data-face="2"></div>
-          <div class="cube-face f-B" data-face="3"></div>
-          <div class="cube-face f-R" data-face="4"></div>
-          <div class="cube-face f-L" data-face="5"></div>
+        <div class="camera-area" id="cameraArea">
+          <video id="video" autoplay playsinline muted></video>
+          <div class="overlay-grid" id="overlayGrid">
+            <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
+            <div class="ov-cell"></div><div class="ov-center"></div><div class="ov-cell"></div>
+            <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
+          </div>
         </div>
-      </div>
-      <div class="editor-panel hidden" id="editorPanel">
-        <div class="editor-title" id="editorTitle">编辑面</div>
-        <div class="editor-sub">先点格子，再点下方颜色</div>
-        <div class="editor-grid" id="editorGrid"></div>
-        <div class="color-picker">
-          <div class="picker-swatches" id="editorPicker"></div>
-        </div>
-        <div class="editor-actions">
-          <button class="btn-primary" onclick="saveFace()">保存这一面 ✓</button>
+
+        <p class="hint">让九宫格正好罩住魔方的这一面，取景框会实时显示识别到的颜色。光线均匀一点会更准。</p>
+
+        <div class="card-head" style="margin-top:14px"><h2 class="card-title">当前在拍</h2></div>
+        <div class="face-chips" id="faceChips"></div>
+
+        <div class="actions">
+          <button class="btn-primary" id="captureBtn" type="button">识别这一面</button>
           <div class="action-row">
-            <button class="btn-secondary" onclick="closeEditor()">取消</button>
-            <button class="btn-small danger" onclick="clearFace()">清空</button>
+            <button class="btn-ghost" id="skipBtn2" type="button">不用拍照，直接手填</button>
           </div>
         </div>
       </div>
-      <div class="action-buttons">
-        <button class="btn-primary" id="solveBtn" onclick="trySolve()" style="display:none;">✅ 六面完成，开始求解</button>
+    </section>
+
+    <!-- 第二步：核对并求解（与手动填色共用同一套输入组件） -->
+    <section id="fillPhase" style="display:none">
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">核对颜色</h2>
+          <span class="pill" id="cubeProgress">已填 0 / 6 面</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="cubeProgressBar"></div></div>
+
+        <div class="net" id="net"></div>
+
+        <p class="hint">识别不准的格子可以直接改：选个颜色，再点格子覆盖掉。</p>
+        <p class="input-hint" id="inputHint"></p>
       </div>
-    </div>
+
+      <section class="card">
+        <div class="card-head"><h2 class="card-title">选颜色</h2><span class="card-sub">选中后在上方点格子</span></div>
+        <div class="palette" id="palette"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2 class="card-title">立体预览</h2><span class="card-sub">可拖动旋转</span></div>
+        <div class="cube-scene" id="cubeScene"><div class="cube" id="cube3d"></div></div>
+      </section>
+
+      <div class="actions">
+        <button class="btn-primary" id="solveBtn" type="button" disabled>开始求解</button>
+        <div class="action-row">
+          <button class="btn-ghost" id="resetBtn" type="button">全部清空</button>
+        </div>
+      </div>
+    </section>
   </div>
 
   <div class="toast" id="toast"></div>
 
   <script>
-    var COLORS = [
-      { hex: "#ffffff", name: "白" }, { hex: "#ffd500", name: "黄" },
-      { hex: "#00b16a", name: "绿" }, { hex: "#0051ba", name: "蓝" },
-      { hex: "#b71234", name: "红" }, { hex: "#ff5800", name: "橙" }
-    ];
-    var FACE_NAMES = ["上面(U)", "下面(D)", "前面(F)", "后面(B)", "右面(R)", "左面(L)"];
-
-    var cubeFaces = [];
-    for (var f = 0; f < 6; f++) cubeFaces.push([-1,-1,-1,-1,-1,-1,-1,-1,-1]);
-    var editingFace = -1, tempFill = -1;
-    var stream = null;
-
-    function buildCubeStickers() {
-      document.querySelectorAll(".cube-face").forEach(function (faceEl) {
-        var fi = parseInt(faceEl.getAttribute("data-face"), 10);
-        faceEl.innerHTML = "";
-        for (var i = 0; i < 9; i++) {
-          var stk = document.createElement("div");
-          stk.className = "stk";
-          var col = cubeFaces[fi][i];
-          stk.style.backgroundColor = (col >= 0) ? COLORS[col].hex : "#444";
-          faceEl.appendChild(stk);
-        }
-        faceEl.classList.toggle("recorded", cubeFaces[fi].indexOf(-1) < 0);
-      });
-      document.getElementById("cubeProgress").textContent = "已填 " + recordedCount() + " / 6 面";
-      document.getElementById("solveBtn").style.display = (recordedCount() === 6) ? "block" : "none";
-    }
-
-    function recordedCount() {
-      var n = 0;
-      for (var f = 0; f < 6; f++) if (cubeFaces[f].indexOf(-1) < 0) n++;
-      return n;
-    }
-
-    function openEditor(faceIndex) {
-      editingFace = faceIndex; tempFill = -1;
-      document.getElementById("editorTitle").textContent = "编辑：" + FACE_NAMES[faceIndex];
-      renderEditorGrid(); renderEditorPicker();
-      document.getElementById("editorPanel").classList.remove("hidden");
-      document.querySelectorAll(".cube-face").forEach(function (el) {
-        el.classList.toggle("active", parseInt(el.getAttribute("data-face"), 10) === faceIndex);
-      });
-    }
-    function closeEditor() {
-      editingFace = -1;
-      document.getElementById("editorPanel").classList.add("hidden");
-      document.querySelectorAll(".cube-face").forEach(function (el) { el.classList.remove("active"); });
-    }
-    function renderEditorGrid() {
-      var container = document.getElementById("editorGrid"); container.innerHTML = "";
-      for (var r = 0; r < 3; r++) {
-        var row = document.createElement("div"); row.className = "editor-row";
-        for (var c = 0; c < 3; c++) {
-          var idx = r * 3 + c;
-          var cell = document.createElement("div");
-          cell.className = "editor-cell" + (tempFill === idx ? " selected" : "");
-          var col = cubeFaces[editingFace][idx];
-          cell.style.backgroundColor = (col >= 0) ? COLORS[col].hex : "#eee";
-          cell.onclick = (function(i) { return function() { tempFill = i; renderEditorGrid(); renderEditorPicker(); }; })(idx);
-          row.appendChild(cell);
-        }
-        container.appendChild(row);
-      }
-    }
-    function renderEditorPicker() {
-      var container = document.getElementById("editorPicker"); container.innerHTML = "";
-      for (var i = 0; i < COLORS.length; i++) {
-        var sw = document.createElement("div");
-        sw.className = "color-swatch"; sw.style.backgroundColor = COLORS[i].hex;
-        sw.onclick = (function(idx) { return function() {
-          if (tempFill < 0) { showToast("请先点要填的格子"); return; }
-          cubeFaces[editingFace][tempFill] = idx; tempFill = -1; renderEditorGrid();
-        }; })(i);
-        var label = document.createElement("div"); label.className = "swatch-name"; label.textContent = COLORS[i].name;
-        sw.appendChild(label); container.appendChild(sw);
-      }
-    }
-    function saveFace() {
-      for (var i = 0; i < 9; i++) if (cubeFaces[editingFace][i] < 0) { showToast("请填完 9 格"); return; }
-      closeEditor(); buildCubeStickers(); showToast("已保存，可继续填其它面");
-    }
-    function clearFace() {
-      cubeFaces[editingFace] = [-1,-1,-1,-1,-1,-1,-1,-1,-1];
-      tempFill = -1; renderEditorGrid(); buildCubeStickers();
-    }
-    function trySolve() {
-      for (var f = 0; f < 6; f++) if (cubeFaces[f].indexOf(-1) >= 0) { showToast("还有面没填完"); return; }
-      var state = new Array(54);
-      for (var pf = 0; pf < 6; pf++) for (var i = 0; i < 9; i++) state[CubeEngine.FS[pf] + i] = cubeFaces[pf][i];
-      CubeState.cubeData = state; CubeState.scanMode = "camera";
-      location.href = "solve.html";
-    }
-
-    // 拖动旋转
-    (function () {
-      var scene = document.getElementById("cubeScene");
-      var cube = document.getElementById("cube3d");
-      var rx = -25, ry = -35, dragging = false, lx = 0, ly = 0, downX = 0, downY = 0, moved = false, downFace = null;
-      function apply() { cube.style.transform = "rotateX(" + rx + "deg) rotateY(" + ry + "deg)"; }
-      scene.addEventListener("pointerdown", function (e) {
-        dragging = true; moved = false;
-        lx = e.clientX; ly = e.clientY; downX = e.clientX; downY = e.clientY;
-        var t = (e.target.closest && e.target.closest(".cube-face")) || e.target;
-        downFace = t && t.getAttribute ? t.getAttribute("data-face") : null;
-        scene.classList.add("dragging");
-        try { scene.setPointerCapture(e.pointerId); } catch (err) {}
-      });
-      scene.addEventListener("pointermove", function (e) {
-        if (!dragging) return;
-        if (Math.abs(e.clientX - downX) > 5 || Math.abs(e.clientY - downY) > 5) moved = true;
-        ry += (e.clientX - lx) * 0.6; rx -= (e.clientY - ly) * 0.6;
-        rx = Math.max(-90, Math.min(90, rx));
-        lx = e.clientX; ly = e.clientY; apply();
-      });
-      scene.addEventListener("pointerup", function (e) {
-        dragging = false; scene.classList.remove("dragging");
-        if (!moved && downFace !== null) openEditor(parseInt(downFace, 10));
-      });
-      scene.addEventListener("pointercancel", function () { dragging = false; scene.classList.remove("dragging"); });
-      apply();
-    })();
-
-    function startCamera() {
-      var area = document.getElementById("cameraArea");
-      var existing = document.getElementById("video");
-      if (!existing) {
-        area.innerHTML = '<video id="video" autoplay playsinline></video>' +
-          '<div class="overlay-grid" id="overlayGrid"><div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-center"></div><div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div></div>';
-      }
-      var video = document.getElementById("video");
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-          .then(function (s) { stream = s; video.srcObject = s; video.play(); })
-          .catch(function () { showCameraFallback(); });
-      } else { showCameraFallback(); }
-    }
-    function showCameraFallback() {
-      document.getElementById("cameraArea").innerHTML = '<div class="camera-placeholder"><div class="camera-icon-big">📷</div><div>相机不可用，直接填色即可</div></div>';
-    }
-    function stopCamera() { if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; } }
-
-    function takePhoto() {
-      var video = document.getElementById("video");
-      if (!video || !video.videoWidth) { showToast("相机还没准备好，稍等或跳过"); return; }
-      var canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-      canvas.getContext("2d").drawImage(video, 0, 0);
-      document.getElementById("photoPreview").src = canvas.toDataURL("image/jpeg");
-      document.getElementById("refWrap").style.display = "block";
-      enterFill();
-    }
-    function skipPhoto() { enterFill(); }
-    function enterFill() { stopCamera(); document.getElementById("capturePhase").style.display = "none"; document.getElementById("fillPhase").style.display = "block"; buildCubeStickers(); }
-
-    function showToast(m) { var t = document.getElementById("toast"); t.textContent = m; t.className = "toast show"; setTimeout(function() { t.className = "toast"; }, 2000); }
-
-    startCamera();
+    window.CubeInput.init({ mode: 'camera' });
+    window.CubeCamera.init();
+    var skip2 = document.getElementById('skipBtn2');
+    if (skip2) skip2.addEventListener('click', function () {
+      window.CubeCamera.stop();
+      document.getElementById('capturePhase').style.display = 'none';
+      document.getElementById('fillPhase').style.display = 'block';
+      window.CubeInput.refresh();
+      window.scrollTo(0, 0);
+    });
   </script>
 </body>
 </html>

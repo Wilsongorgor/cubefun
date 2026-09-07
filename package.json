@@ -1,0 +1,14 @@
+{
+  "name": "cube-solver-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "乐玩魔方 — 纯前端三阶魔方还原助手（拍照识别 / 手动填色 / 3D 步骤演示）",
+  "scripts": {
+    "test": "node tests/engine.test.js && node tests/pages.test.js",
+    "test:engine": "node tests/engine.test.js",
+    "test:pages": "node tests/pages.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
