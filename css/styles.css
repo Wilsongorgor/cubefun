@@ -25,9 +25,7 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html, body {
-  height: 100%;
-}
+html, body { height: 100%; }
 
 body {
   min-height: 100%;
@@ -43,7 +41,7 @@ body {
 
 button { font-family: inherit; font-size: inherit; cursor: pointer; border: none; outline: none; background: none; color: inherit; }
 a { color: inherit; text-decoration: none; }
-b { font-weight: 600; }
+b { font-weight: 700; }
 
 .page {
   max-width: 520px;
@@ -55,7 +53,7 @@ b { font-weight: 600; }
 .home { padding-top: 28px; }
 
 .hero { text-align: center; padding: 18px 0 30px; }
-.hero-icon { width: 76px; height: 76px; border-radius: 20px; box-shadow: var(--shadow-lg); }
+.hero-icon { width: 84px; height: 84px; border-radius: 22px; box-shadow: var(--shadow-lg); }
 .hero-title { font-size: 27px; font-weight: 800; letter-spacing: 0.5px; margin: 14px 0 6px; }
 .hero-sub { font-size: 14px; color: var(--ink-2); }
 
@@ -102,56 +100,111 @@ b { font-weight: 600; }
   padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow);
 }
 .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.card-head.bare { margin-bottom: 10px; }
 .card-title { font-size: 15px; font-weight: 700; flex: 1; }
 .card-sub { font-size: 12px; color: var(--ink-3); font-weight: 400; }
 .pill {
   font-size: 12px; font-weight: 600; color: var(--primary);
   background: var(--primary-soft); padding: 4px 10px; border-radius: 999px; white-space: nowrap;
 }
+.btn-mini {
+  font-size: 12px; font-weight: 600; color: var(--primary);
+  background: var(--primary-soft); padding: 5px 11px; border-radius: 999px;
+}
 
 .progress-track { height: 6px; background: #eef0f7; border-radius: 999px; overflow: hidden; margin-bottom: 16px; }
+.progress-track.flex { flex: 1; margin-bottom: 0; }
 .progress-fill {
   height: 100%; width: 0; border-radius: 999px;
   background: var(--gradient); transition: width 0.28s ease;
 }
 
 .hint { font-size: 12.5px; color: var(--ink-3); line-height: 1.7; margin-top: 10px; }
+.hint.center { text-align: center; margin-top: 2px; margin-bottom: 12px; }
 .input-hint {
   display: none; margin-top: 8px; font-size: 13px; font-weight: 600;
   color: var(--danger); background: #fff1f1; border-radius: var(--radius-sm); padding: 8px 10px;
 }
 
-/* ---------------- 六面展开图 ---------------- */
-.net {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(3, auto);
-  gap: 6px;
+/* ---------------- 3D 魔方 ---------------- */
+.cube-scene {
+  width: 230px; height: 230px; margin: 0 auto 4px;
+  perspective: 900px; touch-action: none; user-select: none;
 }
-.net-face { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.net-label { font-size: 11px; color: var(--ink-3); font-weight: 600; letter-spacing: 0.3px; }
-.net-face.is-done .net-label { color: var(--success); }
-.net-grid {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 2px;
-  padding: 3px;
-  background: #232838;
-  border-radius: 7px;
-  transition: box-shadow 0.15s;
+.cube-scene.dragging { cursor: grabbing; }
+.cube {
+  position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d;
 }
-.net-face.is-focus .net-grid { box-shadow: 0 0 0 3px var(--highlight); }
-.net-cell {
-  aspect-ratio: 1 / 1;
-  border-radius: 3px;
-  background: #3a3f55;
+.cube.animating { transition: transform 0.55s cubic-bezier(0.32, 0.72, 0.3, 1); }
+.cube-face {
+  position: absolute; width: 140px; height: 140px; left: 45px; top: 45px;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  gap: 3px; padding: 5px;
+  background: #1b1f2b; border-radius: 10px;
+  box-shadow: 0 0 0 2px rgba(20, 24, 35, 0.5);
   cursor: pointer;
-  transition: transform 0.08s ease;
-  box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.16), inset 0 2px 3px rgba(255, 255, 255, 0.22);
 }
-.net-cell:active { transform: scale(0.9); }
-.net-cell.is-center { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55); }
+.cube-face .stk {
+  border-radius: 4px;
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.20), inset 0 2px 3px rgba(255, 255, 255, 0.28);
+}
+.cube-face.is-active {
+  box-shadow: 0 0 0 4px var(--highlight), 0 0 26px rgba(255, 201, 60, 0.5);
+}
+.cube-face.f-U { transform: rotateX(90deg) translateZ(70px); }
+.cube-face.f-D { transform: rotateX(-90deg) translateZ(70px); }
+.cube-face.f-F { transform: translateZ(70px); }
+.cube-face.f-B { transform: rotateY(180deg) translateZ(70px); }
+.cube-face.f-R { transform: rotateY(90deg) translateZ(70px); }
+.cube-face.f-L { transform: rotateY(-90deg) translateZ(70px); }
+
+/* ---------------- 引导条 ---------------- */
+.guide {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: #f4f6ff; border: 1px solid #e0e6ff;
+  border-radius: 12px; padding: 10px 12px; margin-bottom: 12px;
+  font-size: 13px; color: var(--ink-2);
+}
+.guide-step {
+  font-size: 11px; font-weight: 700; color: var(--primary);
+  background: var(--primary-soft); padding: 2px 8px; border-radius: 999px;
+}
+.guide-arrow { font-size: 19px; line-height: 1; }
+.guide-text { flex: 1; min-width: 150px; }
+.guide-text b { color: var(--ink); }
+.guide-btn {
+  font-size: 12px; font-weight: 700; color: #fff;
+  background: var(--primary); padding: 6px 13px; border-radius: 999px;
+}
+.guide-left { font-size: 12px; color: var(--ink-3); }
+.guide.is-done { background: #eaf8f0; border-color: #bdeccd; }
+.guide-done { font-size: 13px; font-weight: 700; color: var(--success); }
+
+/* ---------------- 面切换 ---------------- */
+.face-chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.face-chip {
+  padding: 9px 0; border-radius: 10px; background: #f4f6fb;
+  border: 2px solid transparent; font-size: 12px; font-weight: 600; color: var(--ink-2);
+  transition: all 0.12s;
+}
+.face-chip.is-active { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.face-chip.is-done { background: #e6f7ee; color: var(--success); }
+.face-chip.is-done.is-active { border-color: var(--success); }
+
+/* ---------------- 单面编辑器 ---------------- */
+.face-editor {
+  width: 216px; margin: 0 auto 16px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  padding: 8px; background: #232838; border-radius: 14px;
+}
+.ed-cell {
+  aspect-ratio: 1 / 1; border-radius: 8px; background: #3a3f55;
+  cursor: pointer; transition: transform 0.08s ease;
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.18), inset 0 2px 3px rgba(255, 255, 255, 0.25);
+}
+.ed-cell:active { transform: scale(0.9); }
+.ed-cell.is-center { box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.45); }
 
 /* ---------------- 调色板 ---------------- */
 .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -173,40 +226,6 @@ b { font-weight: 600; }
 }
 .swatch-text { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .swatch-btn.is-active .swatch-text { color: var(--primary); }
-
-/* ---------------- 3D 魔方 ---------------- */
-.cube-scene {
-  width: 220px; height: 220px; margin: 4px auto;
-  perspective: 800px; touch-action: none; user-select: none;
-}
-.cube-scene.dragging { cursor: grabbing; }
-.cube {
-  position: relative; width: 100%; height: 100%;
-  transform-style: preserve-3d;
-  transform: rotateX(-24deg) rotateY(-34deg);
-}
-.cube-face {
-  position: absolute; width: 130px; height: 130px; left: 45px; top: 45px;
-  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
-  gap: 3px; padding: 4px;
-  background: #1b1f2b; border-radius: 8px;
-  box-shadow: 0 0 0 2px rgba(20, 24, 35, 0.5);
-  cursor: pointer;
-}
-.cube-face .stk {
-  border-radius: 4px;
-  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.20), inset 0 2px 3px rgba(255, 255, 255, 0.28);
-}
-.cube-face.is-focus { box-shadow: 0 0 0 3px var(--highlight); }
-.cube-face.is-highlight {
-  box-shadow: 0 0 0 4px var(--highlight), 0 0 24px rgba(255, 201, 60, 0.6);
-}
-.cube-face.f-U { transform: rotateX(90deg) translateZ(65px); }
-.cube-face.f-D { transform: rotateX(-90deg) translateZ(65px); }
-.cube-face.f-F { transform: translateZ(65px); }
-.cube-face.f-B { transform: rotateY(180deg) translateZ(65px); }
-.cube-face.f-R { transform: rotateY(90deg) translateZ(65px); }
-.cube-face.f-L { transform: rotateY(-90deg) translateZ(65px); }
 
 /* ---------------- 按钮 ---------------- */
 .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
@@ -260,18 +279,7 @@ b { font-weight: 600; }
 }
 .camera-icon-big { font-size: 40px; margin-bottom: 10px; }
 
-.face-chips { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 6px; }
-.face-chip {
-  padding: 8px 0; border-radius: 10px; background: #f4f6fb;
-  border: 2px solid transparent; font-size: 12px; font-weight: 600; color: var(--ink-2);
-  transition: all 0.12s;
-}
-.chip-name { display: block; }
-.face-chip.is-current { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
-.face-chip.is-done { background: #e6f7ee; color: var(--success); }
-.face-chip.is-done.is-current { border-color: var(--success); }
-
-/* ---------------- 状态面板（求解中 / 出错 / 完成） ---------------- */
+/* ---------------- 状态面板 ---------------- */
 .state-panel {
   display: flex; flex-direction: column; align-items: center;
   padding: 56px 20px; text-align: center;
@@ -310,12 +318,13 @@ b { font-weight: 600; }
 
 /* ---------------- 小屏适配 ---------------- */
 @media (max-width: 380px) {
-  .cube-scene { width: 190px; height: 190px; }
-  .cube-face { width: 112px; height: 112px; left: 39px; top: 39px; }
-  .cube-face.f-U { transform: rotateX(90deg) translateZ(56px); }
-  .cube-face.f-D { transform: rotateX(-90deg) translateZ(56px); }
-  .cube-face.f-F { transform: translateZ(56px); }
-  .cube-face.f-B { transform: rotateY(180deg) translateZ(56px); }
-  .cube-face.f-R { transform: rotateY(90deg) translateZ(56px); }
-  .cube-face.f-L { transform: rotateY(-90deg) translateZ(56px); }
+  .cube-scene { width: 200px; height: 200px; }
+  .cube-face { width: 122px; height: 122px; left: 39px; top: 39px; }
+  .cube-face.f-U { transform: rotateX(90deg) translateZ(61px); }
+  .cube-face.f-D { transform: rotateX(-90deg) translateZ(61px); }
+  .cube-face.f-F { transform: translateZ(61px); }
+  .cube-face.f-B { transform: rotateY(180deg) translateZ(61px); }
+  .cube-face.f-R { transform: rotateY(90deg) translateZ(61px); }
+  .cube-face.f-L { transform: rotateY(-90deg) translateZ(61px); }
+  .face-editor { width: 190px; }
 }

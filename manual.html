@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#4f6ef7">
   <title>手动填色 · 乐玩魔方</title>
-  <link rel="icon" href="images/icon.png" type="image/png">
+  <link rel="icon" href="images/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/cube.js"></script>
   <script src="js/app.js"></script>
@@ -19,28 +20,27 @@
       <button class="nav-action" id="resetBtn" type="button">清空</button>
     </nav>
 
+    <div class="card-head bare">
+      <span class="pill" id="cubeProgress">已填 0 / 6 面</span>
+      <div class="progress-track flex"><div class="progress-fill" id="cubeProgressBar"></div></div>
+    </div>
+
+    <section class="card">
+      <div class="cube-scene" id="cubeScene"><div class="cube" id="cube3d"></div></div>
+      <p class="hint center">拖动可以随便转着看 · 高亮的这面就是正在填的</p>
+      <div class="guide" id="guideBox"></div>
+      <div class="face-chips" id="faceChips"></div>
+    </section>
+
     <section class="card">
       <div class="card-head">
-        <h2 class="card-title">六面展开图</h2>
-        <span class="pill" id="cubeProgress">已填 0 / 6 面</span>
+        <h2 class="card-title" id="editorTitle">填写前面 (F)</h2>
+        <button class="btn-mini" id="centerBtn" type="button">对准这面</button>
       </div>
-      <div class="progress-track"><div class="progress-fill" id="cubeProgressBar"></div></div>
-
-      <div class="net" id="net"></div>
-
-      <p class="hint">展开图 = 魔方拆开摊平：上面在上、下面在下，中间一圈是 左·前·右·后。照着手里的魔方，一格一格点出来。</p>
-      <p class="input-hint" id="inputHint"></p>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><h2 class="card-title">选颜色</h2><span class="card-sub">选中后在上方点格子</span></div>
+      <div class="face-editor" id="faceEditor"></div>
       <div class="palette" id="palette"></div>
-    </section>
-
-    <section class="card">
-      <div class="card-head"><h2 class="card-title">立体预览</h2><span class="card-sub">可拖动旋转</span></div>
-      <div class="cube-scene" id="cubeScene"><div class="cube" id="cube3d"></div></div>
-      <p class="hint">点立体图上的某个面，可以在展开图里高亮它。</p>
+      <p class="hint">先选颜色，再点格子。中心那一格决定这一面最终是什么颜色。</p>
+      <p class="input-hint" id="inputHint"></p>
     </section>
 
     <div class="actions">

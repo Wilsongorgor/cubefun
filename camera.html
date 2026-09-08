@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#4f6ef7">
   <title>拍照识别 · 乐玩魔方</title>
-  <link rel="icon" href="images/icon.png" type="image/png">
+  <link rel="icon" href="images/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="stylesheet" href="css/styles.css">
   <script src="js/cube.js"></script>
   <script src="js/app.js"></script>
@@ -17,72 +18,60 @@
     <nav class="nav-bar">
       <a class="nav-back" href="index.html" aria-label="返回">‹</a>
       <span class="nav-title">拍照识别</span>
-      <button class="nav-action" id="skipBtn" type="button">跳过</button>
+      <button class="nav-action" id="resetBtn" type="button">清空</button>
     </nav>
 
-    <!-- 第一步：拍照取色 -->
-    <section id="capturePhase">
-      <div class="card">
-        <div class="card-head">
-          <h2 class="card-title">对准魔方</h2>
-          <span class="pill" id="captureFaceName">上面 (U)</span>
-        </div>
+    <div class="card-head bare">
+      <span class="pill" id="cubeProgress">已填 0 / 6 面</span>
+      <div class="progress-track flex"><div class="progress-fill" id="cubeProgressBar"></div></div>
+    </div>
 
-        <div class="camera-area" id="cameraArea">
-          <video id="video" autoplay playsinline muted></video>
-          <div class="overlay-grid" id="overlayGrid">
-            <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
-            <div class="ov-cell"></div><div class="ov-center"></div><div class="ov-cell"></div>
-            <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
-          </div>
-        </div>
-
-        <p class="hint">让九宫格正好罩住魔方的这一面，取景框会实时显示识别到的颜色。光线均匀一点会更准。</p>
-
-        <div class="card-head" style="margin-top:14px"><h2 class="card-title">当前在拍</h2></div>
-        <div class="face-chips" id="faceChips"></div>
-
-        <div class="actions">
-          <button class="btn-primary" id="captureBtn" type="button">识别这一面</button>
-          <div class="action-row">
-            <button class="btn-ghost" id="skipBtn2" type="button">不用拍照，直接手填</button>
-          </div>
+    <section class="card" id="cameraPanel">
+      <div class="card-head">
+        <h2 class="card-title">对准魔方</h2>
+        <span class="pill" id="captureFaceName">前面 (F)</span>
+      </div>
+      <div class="camera-area" id="cameraArea">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="overlay-grid" id="overlayGrid">
+          <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
+          <div class="ov-cell"></div><div class="ov-center"></div><div class="ov-cell"></div>
+          <div class="ov-cell"></div><div class="ov-cell"></div><div class="ov-cell"></div>
         </div>
       </div>
-    </section>
-
-    <!-- 第二步：核对并求解（与手动填色共用同一套输入组件） -->
-    <section id="fillPhase" style="display:none">
-      <div class="card">
-        <div class="card-head">
-          <h2 class="card-title">核对颜色</h2>
-          <span class="pill" id="cubeProgress">已填 0 / 6 面</span>
-        </div>
-        <div class="progress-track"><div class="progress-fill" id="cubeProgressBar"></div></div>
-
-        <div class="net" id="net"></div>
-
-        <p class="hint">识别不准的格子可以直接改：选个颜色，再点格子覆盖掉。</p>
-        <p class="input-hint" id="inputHint"></p>
-      </div>
-
-      <section class="card">
-        <div class="card-head"><h2 class="card-title">选颜色</h2><span class="card-sub">选中后在上方点格子</span></div>
-        <div class="palette" id="palette"></div>
-      </section>
-
-      <section class="card">
-        <div class="card-head"><h2 class="card-title">立体预览</h2><span class="card-sub">可拖动旋转</span></div>
-        <div class="cube-scene" id="cubeScene"><div class="cube" id="cube3d"></div></div>
-      </section>
-
+      <p class="hint">让九宫格正好罩住魔方的这一面，取景框会实时显示识别到的颜色。光线均匀一点更准。</p>
       <div class="actions">
-        <button class="btn-primary" id="solveBtn" type="button" disabled>开始求解</button>
+        <button class="btn-primary" id="captureBtn" type="button">识别前面</button>
         <div class="action-row">
-          <button class="btn-ghost" id="resetBtn" type="button">全部清空</button>
+          <button class="btn-ghost" id="hideCameraBtn" type="button">关掉摄像头，改用手填</button>
         </div>
       </div>
     </section>
+
+    <section class="card">
+      <div class="cube-scene" id="cubeScene"><div class="cube" id="cube3d"></div></div>
+      <p class="hint center">拖动可以随便转着看 · 高亮的这面就是正在填的</p>
+      <div class="guide" id="guideBox"></div>
+      <div class="face-chips" id="faceChips"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 class="card-title" id="editorTitle">填写前面 (F)</h2>
+        <button class="btn-mini" id="centerBtn" type="button">对准这面</button>
+      </div>
+      <div class="face-editor" id="faceEditor"></div>
+      <div class="palette" id="palette"></div>
+      <p class="hint">识别不准的格子可以直接改：选个颜色，再点格子覆盖掉。</p>
+      <p class="input-hint" id="inputHint"></p>
+    </section>
+
+    <div class="actions">
+      <button class="btn-primary" id="solveBtn" type="button" disabled>开始求解</button>
+      <div class="action-row">
+        <button class="btn-ghost" id="scrambleBtn" type="button">随机打乱（试玩）</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -90,14 +79,6 @@
   <script>
     window.CubeInput.init({ mode: 'camera' });
     window.CubeCamera.init();
-    var skip2 = document.getElementById('skipBtn2');
-    if (skip2) skip2.addEventListener('click', function () {
-      window.CubeCamera.stop();
-      document.getElementById('capturePhase').style.display = 'none';
-      document.getElementById('fillPhase').style.display = 'block';
-      window.CubeInput.refresh();
-      window.scrollTo(0, 0);
-    });
   </script>
 </body>
 </html>
