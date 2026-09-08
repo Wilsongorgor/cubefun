@@ -1,0 +1,20 @@
+# Cloudflare Workers 静态资源忽略表（语法同 .gitignore）
+# 与 wrangler.jsonc 的 assets.exclude 互为双保险：
+# 只要把 node_modules 挡在上传清单外，就不会撞上 workerd 单文件 147 MiB 超限的问题。
+node_modules
+node_modules/**
+
+.git
+.github
+.workbuddy
+
+tests
+*.md
+package.json
+package-lock.json
+
+wrangler.jsonc
+wrangler.toml
+.gitignore
+.assetsignore
+.editorconfig

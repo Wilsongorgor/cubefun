@@ -14,7 +14,35 @@
 
 ## 在线体验
 
-用 GitHub Pages 托管，推送到 `master` 后自动生效。
+| 方式 | 地址 |
+| --- | --- |
+| GitHub Pages | <https://wilsongorgor.github.io/cubefun/> |
+| Cloudflare Workers | 见下方部署说明 |
+
+两者都是静态托管，功能完全一致（拍照识别需要 HTTPS，两个都满足）。
+
+## 部署到 Cloudflare Workers
+
+项目根已带 `wrangler.jsonc`，把整个仓库目录作为静态资源目录。
+
+> ⚠️ **必须保留 `assets.exclude` 里的 `node_modules`**。构建机在 `/opt/buildhome/repo`
+> 里会先 `npm install`，而 wrangler 自带的 `node_modules/workerd/bin/workerd` 有 **147 MiB**，
+> 一旦被当成静态资源就会报
+> `Workers supports assets with sizes of up to 25 MiB`。排除掉之后实际上传约 350 KB。
+> `.assetsignore` 是同一目的的第二道保险。
+
+控制台设置（Workers & Pages → Create → Workers → 连接到 Git）：
+
+- **Build command**：留空（纯静态，不需要构建）
+- **Deploy command**：留空
+- **Root directory**：`/`
+- 部署分支选 `master`
+
+如果想本地部署：
+
+```bash
+npx wrangler deploy
+```
 
 ## 本地运行
 
