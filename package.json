@@ -4,12 +4,14 @@
   "private": true,
   "description": "乐玩魔方 — 纯前端三阶魔方还原助手（拍照识别 / 手动填色 / 3D 步骤演示）",
   "scripts": {
-    "test": "node tests/engine.test.js && node tests/colorscheme.test.js && node tests/cubies.test.js && node tests/viewmap.test.js && node tests/pages.test.js",
+    "test": "node tests/engine.test.js && node tests/colorscheme.test.js && node tests/cubies.test.js && node tests/viewmap.test.js && node tests/pages.test.js && node tests/e2e.test.js",
     "test:engine": "node tests/engine.test.js",
     "test:colorscheme": "node tests/colorscheme.test.js",
     "test:cubies": "node tests/cubies.test.js",
     "test:viewmap": "node tests/viewmap.test.js",
-    "test:pages": "node tests/pages.test.js"
+    "test:pages": "node tests/pages.test.js",
+    "test:e2e": "node tests/e2e.test.js",
+    "test:mutation": "node tests/mutation.js"
   },
   "devDependencies": {
     "jsdom": "^29.1.1"
