@@ -33,6 +33,8 @@
    *   - 一个块里出现重复颜色
    *   - 一个块里出现了本该在对面的颜色（典型的"某一面整体填反/填错面"）
    * 查不出来的（整体奇偶、朝向错误）仍然只能交给 min2phase。
+   *
+   * 返回的 idx 是 cube.js 的贴纸下标，UI 用它把可疑格子标红。
    */
   function diagnose(cube) {
     var ch = colorToFaceChar(cube);
@@ -44,13 +46,50 @@
       var col = got(CORNERS[i]);
       var bad = col[0] === col[1] || col[1] === col[2] || col[0] === col[2];
       for (k = 0; k < 3; k++) if (col.indexOf(OPPOSITE[col[k]]) >= 0) bad = true;
-      if (bad) hits.push({ kind: '角块', at: at(CORNERS[i]) });
+      if (bad) hits.push({ kind: '角块', at: at(CORNERS[i]), idx: CORNERS[i].slice() });
     }
     for (i = 0; i < EDGES.length; i++) {
       var e = got(EDGES[i]);
-      if (e[0] === e[1] || e.indexOf(OPPOSITE[e[0]]) >= 0) hits.push({ kind: '棱块', at: at(EDGES[i]) });
+      if (e[0] === e[1] || e.indexOf(OPPOSITE[e[0]]) >= 0) {
+        hits.push({ kind: '棱块', at: at(EDGES[i]), idx: EDGES[i].slice() });
+      }
     }
     return hits;
+  }
+
+  /** 中心块出问题（同色 / 没填）时，把出问题的中心格标出来 */
+  function centerIssues(cube) {
+    var seen = {}, out = [], f, c;
+    for (f = 0; f < 6; f++) {
+      c = cube[E.FACE_CENTER[f]];
+      if (!(c >= 0 && c <= 5)) { out.push([f, 4]); continue; }
+      if (seen[c] !== undefined) { out.push([f, 4]); out.push([seen[c], 4]); }
+      else seen[c] = f;
+    }
+    return out;
+  }
+
+  /** 出错格子下标（去重），UI 用来标红 */
+  function badCells(hits) {
+    var out = [];
+    hits.forEach(function (h) {
+      h.idx.forEach(function (x) { if (out.indexOf(x) < 0) out.push(x); });
+    });
+    return out;
+  }
+
+  /** 出错的块集中在哪几个面 —— 按可疑程度排好序，返回面下标 */
+  function suspectFaceIdx(hits) {
+    var freq = {};
+    hits.forEach(function (h) {
+      h.at.forEach(function (fc) { freq[fc] = (freq[fc] || 0) + 1; });
+    });
+    // 只取前 3 个：标太多面等于没标，而且要和文案里列出来的面对得上
+    return Object.keys(freq)
+      .sort(function (a, b) { return freq[b] - freq[a]; })
+      .slice(0, 3)
+      .map(function (fc) { return E.FACE_SHORT.indexOf(fc); })
+      .filter(function (f) { return f >= 0; });
   }
 
   /** 把出错的块描述成中文，并汇总"最可能被填错的面" */
@@ -102,10 +141,13 @@
         '。<br>重点检查 <b>' + d.suspects.join('、') + '</b> 这几面 —— 多半是某一面整体填反了，' +
         '或者填的时候魔方被整个翻过。';
     } else {
-      err = '这个魔方状态无法还原（可能某一面的颜色填错了），请重新采集。' +
+      err = '这个魔方状态无法还原（可能某一面的颜色填错了）。' +
         '<br>提示：整个过程里魔方只能<b>按提示整体转动</b>，不能整个翻过来，否则步骤会对不上。';
     }
-    return { solution: [], error: err, alreadySolved: false };
+    return {
+      solution: [], error: err, alreadySolved: false,
+      bad: badCells(hits), suspectFaces: suspectFaceIdx(hits)
+    };
   }
 
   var _ready = false;
@@ -126,21 +168,31 @@
    */
   function solve(cubeState) {
     var v = E.validate(cubeState);
-    if (!v.ok) return { solution: [], error: v.error, alreadySolved: false };
+    if (!v.ok) {
+      // 中心块撞色是最常见的"形式错误"，把出问题的中心格指出来
+      var cBad = /中心/.test(v.error) ? centerIssues(cubeState) : [];
+      return { solution: [], error: v.error, alreadySolved: false, bad: cBad, suspectFaces: [] };
+    }
 
     if (E.isSolved(cubeState)) {
-      return { solution: [], error: null, alreadySolved: true };
+      return { solution: [], error: null, alreadySolved: true, bad: [], suspectFaces: [] };
     }
 
     if (!warmup()) {
-      return { solution: [], error: '求解器未能正确加载，请刷新页面后重试', alreadySolved: false };
+      return {
+        solution: [], error: '求解器未能正确加载，请刷新页面后重试',
+        alreadySolved: false, bad: [], suspectFaces: []
+      };
     }
 
     var raw;
     try {
       raw = window.Min2phase.solvePattern(toFaceletString(cubeState));
     } catch (e) {
-      return { solution: [], error: '求解时出错：' + (e && e.message ? e.message : '未知错误'), alreadySolved: false };
+      return {
+        solution: [], error: '求解时出错：' + (e && e.message ? e.message : '未知错误'),
+        alreadySolved: false, bad: [], suspectFaces: []
+      };
     }
 
     if (typeof raw === 'string' && raw.indexOf('Error') === 0) return fail(cubeState);
@@ -148,7 +200,10 @@
     var moves = String(raw || '').trim().split(/\s+/).filter(function (s) { return s.length > 0; });
     for (var i = 0; i < moves.length; i++) {
       if (!MOVE_RE.test(moves[i])) {
-        return { solution: [], error: '求解结果异常，请重新采集颜色', alreadySolved: false };
+        return {
+          solution: [], error: '求解结果异常，请重新采集颜色',
+          alreadySolved: false, bad: [], suspectFaces: []
+        };
       }
     }
 
@@ -158,7 +213,7 @@
     for (var k = 0; k < moves.length; k++) check = E.applyMove(check, moves[k]);
     if (!E.isSolved(check)) return fail(cubeState);
 
-    return { solution: moves, error: null, alreadySolved: false };
+    return { solution: moves, error: null, alreadySolved: false, bad: [], suspectFaces: [] };
   }
 
   var DIR_TEXT = { '': '顺时针 90°', "'": '逆时针 90°', '2': '转 180°' };
@@ -179,7 +234,8 @@
     solve: solve,
     describeMove: describeMove,
     getStepText: getStepText,
-    warmup: warmup
+    warmup: warmup,
+    diagnose: diagnose
   };
 
   // 兼容旧调用

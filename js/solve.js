@@ -22,9 +22,14 @@
 
   function $(id) { return document.getElementById(id); }
 
-  function buildCube() {
-    var cube = els.cube3d;
-    cube.innerHTML = '';
+  /** 出错后该回哪个填色页 —— 拍照来的就回拍照页，否则回手动页 */
+  function inputUrl() {
+    var m = (window.CubeState && window.CubeState.scanMode) || 'manual';
+    return m === 'camera' ? 'camera.html' : 'manual.html';
+  }
+
+  function buildCube(cubeEl) {
+    cubeEl.innerHTML = '';
     for (var f = 0; f < 6; f++) {
       var faceEl = document.createElement('div');
       faceEl.className = 'cube-face ' + FACE_CLASS[f];
@@ -34,7 +39,7 @@
         stk.className = 'stk';
         faceEl.appendChild(stk);
       }
-      cube.appendChild(faceEl);
+      cubeEl.appendChild(faceEl);
     }
   }
 
@@ -57,12 +62,57 @@
     return st;
   }
 
-  function showError(msg) {
+  /**
+   * 报错不能是死路：以前只有「重新填色」= 回到空白页，54 格全丢。
+   * 现在这一屏会
+   *   1) 把你填进去的魔方画出来，可疑面标红，可以拖着看；
+   *   2) 把可疑格子的坐标写进填色草稿（CubeInputStore），
+   *      点「返回修改」回到填色页时自动恢复颜色 + 标红。
+   */
+  function showError(msg, info) {
     stopPlay();
     els.solving.style.display = 'none';
     els.solution.style.display = 'none';
     els.error.style.display = 'block';
     $('errorText').innerHTML = msg;
+
+    info = info || { bad: [], suspectFaces: [] };
+    var suspects = info.suspectFaces || [];
+    renderErrorCube(suspects);
+
+    // 把可疑格子写回草稿，让填色页能标红。
+    // 没有魔方数据时不写：那种情况下"返回修改"没有意义，别留个莫名其妙的红条。
+    if (window.CubeInputStore && cubeState && cubeState.length === 54) {
+      var cells = (info.bad || []).map(function (x) {
+        var f = E.indexToFace(x);
+        return [f, x - E.FS[f]];
+      });
+      window.CubeInputStore.save({ bad: cells, msg: msg });
+    }
+  }
+
+  function renderErrorCube(suspects) {
+    var cubeEl = $('errorCube3d');
+    var scene = $('errorScene');
+    var wrap = document.querySelector('.err-cube-wrap');
+    if (!cubeEl || !scene) return;
+    if (!cubeState || cubeState.length !== 54) {
+      if (wrap) wrap.style.display = 'none';
+      return;
+    }
+    if (wrap) wrap.style.display = 'block';
+    buildCube(cubeEl);
+    var faceEls = cubeEl.querySelectorAll('.cube-face');
+    for (var n = 0; n < faceEls.length; n++) {
+      var f = parseInt(faceEls[n].getAttribute('data-face'), 10);
+      var stks = faceEls[n].querySelectorAll('.stk');
+      for (var i = 0; i < 9; i++) {
+        var v = cubeState[E.FS[f] + i];
+        stks[i].style.backgroundColor = v >= 0 && v <= 5 ? E.COLOR_HEX[v] : '#3a3f55';
+      }
+      faceEls[n].classList.toggle('has-error', suspects.indexOf(f) >= 0);
+    }
+    initDragOn(scene, cubeEl);
   }
 
   function goTo(index) {
@@ -132,26 +182,28 @@
     }
   }
 
-  function initDrag() {
+  /** 拖动查看：解法区和报错区各有一个魔方，所以按元素传参 */
+  function initDragOn(scene, cube) {
     var rx = -24, ry = -34, dragging = false, lx = 0, ly = 0;
-    function apply() { els.cube3d.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)'; }
-    els.scene.addEventListener('pointerdown', function (e) {
+    function apply() { cube.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)'; }
+    scene.addEventListener('pointerdown', function (e) {
       dragging = true; lx = e.clientX; ly = e.clientY;
-      try { els.scene.setPointerCapture(e.pointerId); } catch (err) {}
-      els.scene.classList.add('dragging');
+      try { scene.setPointerCapture(e.pointerId); } catch (err) {}
+      scene.classList.add('dragging');
     });
-    els.scene.addEventListener('pointermove', function (e) {
+    scene.addEventListener('pointermove', function (e) {
       if (!dragging) return;
       ry += (e.clientX - lx) * 0.5;
       rx -= (e.clientY - ly) * 0.5;
       if (rx > 88) rx = 88; if (rx < -88) rx = -88;
       lx = e.clientX; ly = e.clientY; apply();
     });
-    function end() { dragging = false; els.scene.classList.remove('dragging'); }
-    els.scene.addEventListener('pointerup', end);
-    els.scene.addEventListener('pointercancel', end);
+    function end() { dragging = false; scene.classList.remove('dragging'); }
+    scene.addEventListener('pointerup', end);
+    scene.addEventListener('pointercancel', end);
     apply();
   }
+  function initDrag() { initDragOn(els.scene, els.cube3d); }
 
   function init() {
     els = {
@@ -171,12 +223,27 @@
     };
 
     var data = window.CubeState && window.CubeState.cubeData;
+
+    // 「‹ 返回」回到填色页，而不是首页 —— 报错后第一反应就是退回去改
+    var back = document.querySelector('.nav-back');
+    if (back) back.setAttribute('href', inputUrl());
+
+    var backBtn = $('backEditBtn');
+    if (backBtn) backBtn.addEventListener('click', function () { window.location.href = inputUrl(); });
+    var restartBtn2 = $('restartInputBtn');
+    if (restartBtn2) restartBtn2.addEventListener('click', function () {
+      if (window.CubeInputStore) window.CubeInputStore.clear();
+      window.CubeState.cubeData = null;
+      window.location.href = 'manual.html';
+    });
+
     if (!data || data.length !== 54) {
       showError('没有读到魔方数据。<br>请先回到首页，用拍照或手动方式把六面颜色填好。');
       return;
     }
 
-    buildCube();
+    cubeState = data.slice();     // 报错时要画给用户看，先存下来
+    buildCube(els.cube3d);
     initDrag();
 
     els.prevBtn.addEventListener('click', function () { stopPlay(); prev(); });
@@ -195,7 +262,9 @@
     setTimeout(function () {
       try {
         var res = S.solve(data);
-        if (res.error) { showError(res.error); return; }
+        if (res.error) { showError(res.error, res); return; }
+        // 求出来了：清掉上一次留在草稿里的红框
+        if (window.CubeInputStore) window.CubeInputStore.save({ bad: [], msg: '' });
         cubeState = data.slice();
         solution = res.solution;
         total = solution.length;

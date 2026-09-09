@@ -50,9 +50,78 @@
   var rx = 0, ry = 0;          // 当前立体旋转量
   var els = {};
 
+  // 求解失败后标出来的可疑格子：[[面下标, 格下标], ...]，以及给用户的提示语
+  var bad = [];
+  var badMsg = '';
+
   function emptyFace() { return [-1, -1, -1, -1, -1, -1, -1, -1, -1]; }
   function resetFaces() { faces = []; for (var f = 0; f < 6; f++) faces.push(emptyFace()); }
   function filledCount() { var n = 0; for (var f = 0; f < 6; f++) if (faces[f].indexOf(-1) < 0) n++; return n; }
+
+  /* ---------------- 草稿 / 问题标记 ---------------- */
+
+  function persist() {
+    if (window.CubeInputStore) window.CubeInputStore.save({ faces: faces, active: activeFace, bad: bad, msg: badMsg });
+  }
+
+  function isBad(f, i) {
+    for (var k = 0; k < bad.length; k++) if (bad[k][0] === f && bad[k][1] === i) return true;
+    return false;
+  }
+  function faceBadCount(f) {
+    var n = 0;
+    for (var k = 0; k < bad.length; k++) if (bad[k][0] === f) n++;
+    return n;
+  }
+  function removeBad(f, i) {
+    var next = [];
+    for (var k = 0; k < bad.length; k++) if (!(bad[k][0] === f && bad[k][1] === i)) next.push(bad[k]);
+    bad = next;
+  }
+  function clearBad() { bad = []; badMsg = ''; }
+
+  /** 可疑格子最多的那一面 —— 返回后直接跳过去 */
+  function worstFace() {
+    var best = -1, bestN = 0;
+    for (var f = 0; f < 6; f++) {
+      var n = faceBadCount(f);
+      if (n > bestN) { bestN = n; best = f; }
+    }
+    return best;
+  }
+
+  /** 顶部那条"上次没算出来"的提示条 */
+  function updateFixBanner() {
+    var box = document.getElementById('fixBanner');
+    if (!box) return;
+    if (!bad.length && !badMsg) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    box.style.display = 'block';
+    box.innerHTML =
+      '<b>上次没能算出解法 —— 下面还是你填的那一版，直接改就行，不用重填。</b>' +
+      (badMsg ? '<br>' + badMsg : '') +
+      (bad.length
+        ? '<br>标红的 <b>' + bad.length + '</b> 格最可疑，点上面的颜色再点格子就能改。'
+        : '<br>暂时定位不到具体格子，建议照着六个面逐个核对一遍。') +
+      '<button type="button" class="fix-clear" id="fixClearBtn">不用提示了，清除红框</button>';
+    var btn = document.getElementById('fixClearBtn');
+    if (btn) btn.addEventListener('click', function () { clearBad(); persist(); refresh(); });
+  }
+
+  /** 从 CubeInputStore 恢复上一次填的颜色（报错后返回 / 浏览器后退都会走到） */
+  function restoreDraft() {
+    var d = window.CubeInputStore && window.CubeInputStore.load();
+    if (!d) return false;
+    if (d.faces) {
+      faces = [];
+      for (var f = 0; f < 6; f++) faces.push(d.faces[f].slice());
+      activeFace = d.active;
+    }
+    bad = d.bad || [];
+    badMsg = d.msg || '';
+    var w = worstFace();
+    if (w >= 0) activeFace = w;
+    return !!d.faces;
+  }
 
   /** 取与 cur 最接近的等价角度，让动画走最短路径 */
   function unwrap(cur, target) {
@@ -99,6 +168,7 @@
       }
       faceEls[n].classList.toggle('is-done', faces[f].indexOf(-1) < 0);
       faceEls[n].classList.toggle('is-active', f === activeFace);
+      faceEls[n].classList.toggle('has-error', faceBadCount(f) > 0);
     }
   }
 
@@ -158,16 +228,20 @@
       var v = faces[activeFace][i];
       cells[i].style.backgroundColor = v < 0 ? EMPTY : COLORS[v].hex;
       cells[i].classList.toggle('is-empty', v < 0);
+      cells[i].classList.toggle('is-bad', isBad(activeFace, i));
     }
     if (els.editorTitle) els.editorTitle.textContent = '填写' + E.FACE_NAMES[activeFace];
   }
 
   function paint(idx) {
     faces[activeFace][idx] = brush;
+    removeBad(activeFace, idx);      // 用户改过这一格了，不再当可疑
     syncCube3D();
     syncEditor();
     syncChips();
     updateStatus();
+    updateFixBanner();
+    persist();
     if (faces[activeFace].indexOf(-1) < 0) onFaceComplete();
   }
 
@@ -311,6 +385,7 @@
       var f = parseInt(chips[i].getAttribute('data-face'), 10);
       chips[i].classList.toggle('is-done', faces[f].indexOf(-1) < 0);
       chips[i].classList.toggle('is-active', f === activeFace);
+      chips[i].classList.toggle('has-error', faceBadCount(f) > 0);
     }
   }
 
@@ -379,6 +454,8 @@
     syncChips();
     updateStatus();
     updateGuidance();
+    updateFixBanner();
+    persist();
   }
 
   function resetAll() {
@@ -386,6 +463,7 @@
     prevFace = -1;
     hintFrom = null;
     activeFace = 2;
+    clearBad();
     faceToFront(2, true);
     refresh();
   }
@@ -396,20 +474,30 @@
     for (var i = 0; i < 25; i++) alg.push(names[Math.floor(Math.random() * names.length)]);
     var st = E.applyAlg(E.solvedCube(), alg.join(' '));
     for (var f = 0; f < 6; f++) for (var k = 0; k < 9; k++) faces[f][k] = st[E.FS[f] + k];
+    clearBad();
     refresh();
     return alg.join(' ');
   }
 
   function setFaceColors(f, arr) {
     faces[f] = arr.slice();
+    clearFaceBad(f);
     refresh();
   }
 
   /** 拍照识别用：把识别结果填进当前面，并自动前进到下一个未填的面 */
   function recognizeActive(arr) {
     faces[activeFace] = arr.slice();
+    clearFaceBad(activeFace);
     refresh();
     if (faces[activeFace].indexOf(-1) < 0) onFaceComplete();
+  }
+
+  /** 重新采集/重填一整面后，这一面原来的红框就没意义了 */
+  function clearFaceBad(f) {
+    var next = [];
+    for (var k = 0; k < bad.length; k++) if (bad[k][0] !== f) next.push(bad[k]);
+    bad = next;
   }
 
   function toState() {
@@ -488,6 +576,7 @@
     };
 
     resetFaces();
+    var restored = restoreDraft();      // 报错后返回 / 浏览器后退：把上次填的拿回来
     buildCube3D();
     buildEditor();
     buildPalette();
@@ -498,6 +587,7 @@
     rx = v.rx; ry = v.ry;
     applyTransform();
     refresh();
+    if (restored && filledCount() > 0) toast('已恢复上次填的颜色，直接改就行');
 
     if (els.solveBtn) els.solveBtn.addEventListener('click', function () { goSolve(opts.mode || 'manual'); });
     var rb = document.getElementById('resetBtn');
@@ -519,6 +609,8 @@
     getActiveFace: function () { return activeFace; },
     setActiveFace: setActiveFace,
     getFaces: function () { return faces; },
+    getBad: function () { return bad; },
+    clearBad: function () { clearBad(); refresh(); },
     toState: toState,
     filledCount: filledCount,
     toast: toast,

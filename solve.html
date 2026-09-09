@@ -28,11 +28,22 @@
       <p class="state-sub">Kociemba 两阶段算法正在搜索解法</p>
     </section>
 
-    <section class="state-panel" id="errorSection" style="display:none">
+    <section class="state-panel is-error" id="errorSection" style="display:none">
       <div class="state-emoji">⚠️</div>
       <p class="state-title">算不出解法</p>
       <p class="state-sub error" id="errorText"></p>
-      <a class="btn-primary" href="manual.html">重新填色</a>
+
+      <div class="err-cube-wrap">
+        <div class="cube-scene" id="errorScene"><div class="cube" id="errorCube3d"></div></div>
+        <p class="hint center">这就是你填进去的颜色，拖动转着看看哪一面不对劲。<br>标红的面最可疑。</p>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="backEditBtn" type="button">返回修改（保留已填的颜色）</button>
+        <div class="action-row">
+          <button class="btn-ghost" id="restartInputBtn" type="button">六面全部重来</button>
+        </div>
+      </div>
     </section>
 
     <section id="solutionSection" style="display:none">
