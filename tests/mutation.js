@@ -11,7 +11,7 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const BACKUP = path.join(__dirname, 'mutation.bak');
-const TESTS = ['e2e', 'colorscheme', 'viewmap', 'engine', 'pages'];
+const TESTS = ['engine', 'colorscheme', 'cubies', 'viewmap', 'pages', 'e2e', 'deep'];
 
 const MUTANTS = [
   {
