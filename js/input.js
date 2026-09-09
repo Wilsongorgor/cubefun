@@ -46,6 +46,7 @@
   var brush = 0;
   var activeFace = 2;          // 默认从「前面」开始
   var prevFace = -1;           // 上一个在填的面，用来生成"怎么转过去"的提示
+  var hintFrom = null;         // 提示动作的起点姿态 {rx, ry}
   var rx = 0, ry = 0;          // 当前立体旋转量
   var els = {};
 
@@ -117,9 +118,22 @@
   /** 把某一面转到正对自己 */
   function faceToFront(f, animate) {
     var v = FACE_VIEW[f];
-    var nrx = unwrap(rx, v.rx), nry = unwrap(ry, v.ry);
-    if (animate) animateTo(nrx, nry);
-    else { rx = nrx; ry = nry; applyTransform(); }
+    var trx = unwrap(rx, v.rx), trry = unwrap(ry, v.ry);
+    // rx 和 ry 同时变 = 复合转动（比如"从左面切到上面"），用户没法一步照做，
+    // 会转错方向、把颜色填到别的面上。所以先回到"正面朝自己"的标准姿态，
+    // 再做一个单轴动作转过去。
+    var compound = Math.abs(trx - rx) > 1 && Math.abs(trry - ry) > 1;
+    if (compound && animate) {
+      animateTo(unwrap(rx, 0), unwrap(ry, 0));
+      clearTimeout(faceToFront._t);
+      faceToFront._t = setTimeout(function () {
+        animateTo(unwrap(rx, v.rx), unwrap(ry, v.ry));
+      }, 620);
+    } else if (animate) {
+      animateTo(trx, trry);
+    } else {
+      rx = trx; ry = trry; applyTransform();
+    }
   }
 
   /* ---------------- 单面编辑器 ---------------- */
@@ -160,6 +174,7 @@
   function setActiveFace(f, animate) {
     if (f !== activeFace) prevFace = activeFace;
     activeFace = f;
+    hintFrom = { rx: rx, ry: ry };      // 记下转动前的姿态，提示要据此算动作
     faceToFront(f, animate !== false);
     syncCube3D();
     syncEditor();
@@ -199,18 +214,32 @@
   }
 
   /**
-   * 生成"把 X 面转到正对自己"的提示文案与方向箭头。
-   * 箭头表示那一面要往哪个方向移动才能来到正前方。
+   * 生成"把某一面转到正对自己"要做的动作序列。
+   *
+   * 复合转动会拆成两步：先转回正面，再做一个单轴动作。
+   * 不拆的话 —— 比如"从左面切到上面"其实要『转回正面 + 往下翻』两步 ——
+   * 提示只说"往左转"，用户转完手里看到的是正面，却往"上面"的格子里填色，
+   * 直接就把颜色填错面了。
    */
-  function rotationHint(from, to) {
-    var a = FACE_VIEW[from], b = FACE_VIEW[to];
+  function rotationSteps(fromRx, fromRy, to) {
+    var a = { rx: fromRx, ry: fromRy }, b = FACE_VIEW[to];
+    var steps = [];
+
+    if (Math.abs(unwrap(a.rx, b.rx) - a.rx) > 1 && Math.abs(unwrap(a.ry, b.ry) - a.ry) > 1) {
+      steps.push({ arrow: '↺', verb: '先转回正面' });
+      a = { rx: unwrap(a.rx, 0), ry: unwrap(a.ry, 0) };
+    }
+
     var drx = unwrap(a.rx, b.rx) - a.rx;
     var dry = unwrap(a.ry, b.ry) - a.ry;
+    if (drx === 0 && dry === 0) return steps;
+
     if (Math.abs(drx) > Math.abs(dry)) {
-      return drx < 0 ? { arrow: '⬇', verb: '往下翻' } : { arrow: '⬆', verb: '往上翻' };
+      steps.push(drx < 0 ? { arrow: '⬇', verb: '往下翻' } : { arrow: '⬆', verb: '往上翻' });
+    } else {
+      steps.push(dry < 0 ? { arrow: '⬅', verb: '往左转' } : { arrow: '➡', verb: '往右转' });
     }
-    if (dry === 0 && drx === 0) return { arrow: '✔', verb: '' };
-    return dry < 0 ? { arrow: '⬅', verb: '往左转' } : { arrow: '➡', verb: '往右转' };
+    return steps;
   }
 
   function updateGuidance() {
@@ -237,11 +266,18 @@
       return;
     }
 
-    var h = rotationHint(prevFace, activeFace);
+    var steps = rotationSteps(
+      hintFrom ? hintFrom.rx : FACE_VIEW[prevFace < 0 ? activeFace : prevFace].rx,
+      hintFrom ? hintFrom.ry : FACE_VIEW[prevFace < 0 ? activeFace : prevFace].ry,
+      activeFace
+    );
+    var arrow = steps.length ? steps[0].arrow : '✔';
+    var verb = steps.map(function (s) { return '<b>' + s.verb + '</b>'; }).join('，再');
+
     box.innerHTML =
       '<span class="guide-step">下一步</span>' +
-      '<span class="guide-arrow">' + h.arrow + '</span>' +
-      '<span class="guide-text">整体<b>' + h.verb + '</b>，把<b>' + curName + '</b>转到正对自己</span>' +
+      '<span class="guide-arrow">' + arrow + '</span>' +
+      '<span class="guide-text">整体' + verb + '，把<b>' + curName + '</b>转到正对自己</span>' +
       '<button type="button" class="guide-btn" id="guideGoBtn">看演示</button>' +
       '<span class="guide-left">还剩 ' + (6 - done) + ' 面</span>';
     var btn = document.getElementById('guideGoBtn');
@@ -348,6 +384,7 @@
   function resetAll() {
     resetFaces();
     prevFace = -1;
+    hintFrom = null;
     activeFace = 2;
     faceToFront(2, true);
     refresh();

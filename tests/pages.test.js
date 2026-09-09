@@ -80,7 +80,13 @@ function click(el, w) { el.dispatchEvent(new w.MouseEvent('click', { bubbles: tr
     click(w.document.querySelectorAll('.face-chip')[0], w);
     ok(w.CubeInput.getActiveFace() === 0, '点面名可直接切到「上面 U」');
 
-    // 立体魔方的 transform 应该把该面转到正面（U → rotateX(-90)）
+    // 从「右面」切到「上面」是复合转动（ry 要归零 + rx 要翻），
+    // 必须拆成"先转回正面 · 再往下翻"两步，否则用户会转错面、把颜色填错。
+    const g2 = w.document.getElementById('guideBox').textContent;
+    ok(g2.indexOf('先转回正面') > 0, '复合转动给出两步提示：' + g2.replace(/\s+/g, ' ').trim());
+
+    // 等两段动画走完再看最终姿态（U → rotateX(-90)）
+    await new Promise(r => setTimeout(r, 1500));
     const tf = w.document.getElementById('cube3d').style.transform;
     ok(tf.indexOf('rotateX(-90deg)') >= 0, '切到上面后立体魔方转到 rotateX(-90deg)：' + tf);
 

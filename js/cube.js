@@ -33,7 +33,9 @@ function equalCube(a,b){for(var i=0;i<54;i++)if(a[i]!==b[i])return false;return 
 
 function indexToFace(i){for(var f=0;f<6;f++)if(i>=FS[f]&&i<FS[f]+9)return f;return -1;}
 
-function isSolved(c){for(var f=0;f<6;f++)for(var i=0;i<9;i++)if(c[FS[f]+i]!==SC[f])return false;return true;}
+// 复原判定：每一面的 9 格都和【自己这一面的中心块】同色。
+// 不能写成"面 f 必须是 SC[f]"，否则非标准配色的魔方永远判不出复原。
+function isSolved(c){for(var f=0;f<6;f++){var want=c[FACE_CENTER[f]];for(var i=0;i<9;i++)if(c[FS[f]+i]!==want)return false;}return true;}
 
 function getFaceColors(c,face){var b=FS[face];return [[c[b],c[b+1],c[b+2]],[c[b+3],c[b+4],c[b+5]],[c[b+6],c[b+7],c[b+8]]];}
 
